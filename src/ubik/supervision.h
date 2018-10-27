@@ -3,6 +3,8 @@
 #include "freeRTOScpp/task_cpp.h"
 #include "event_groups.h"
 
+#include "macros.h"
+
 namespace supervision {
 
 

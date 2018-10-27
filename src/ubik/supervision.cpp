@@ -2,10 +2,6 @@
 
 namespace supervision {
 
-static constexpr auto bit(int number) {
-    return 1 << number;
-}
-
 
 #if configUSE_16_BIT_TICKS == 1
 constexpr int max_num_events = 8;
