@@ -1,0 +1,10 @@
+# This is ageneral OpenOCD script for connecting
+# to STM32Fxxx microcontrollers over SWD
+
+source [find interface/@OPENOCD_INTERFACE@.cfg]
+
+transport select hla_swd
+
+source [find target/@OPENOCD_TARGET@.cfg]
+
+reset_config srst_only

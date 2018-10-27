@@ -1,0 +1,9 @@
+# upload the binary
+program @OPENOCD_TARGET_EXE@
+
+# check if the binary is ok
+verify
+
+# restart target and exit
+reset
+exit

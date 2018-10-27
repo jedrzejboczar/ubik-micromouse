@@ -1,0 +1,3 @@
+gdb_port pipe
+
+log_output @OPENOCD_LOGFILE@

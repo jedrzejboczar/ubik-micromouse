@@ -1,0 +1,17 @@
+# editor configurations
+# Eclipse CDT
+.cproject
+.project
+.settings/
+# TrueSTUDIO
+*.elf.launch
+
+# STMCubeMX
+.mxproject
+mx.scratch
+*.xml
+
+# building directories
+Debug/
+
+*.ce
