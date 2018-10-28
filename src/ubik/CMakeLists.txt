@@ -1,3 +1,5 @@
+add_subdirectory(drivers)
+
 target_sources(${CMAKE_PROJECT_NAME}
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/ubik.cpp"
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/error_hooks.cpp"

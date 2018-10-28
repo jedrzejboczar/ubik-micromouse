@@ -29,6 +29,10 @@ private:
     }
 };
 
+#include "drivers/uart.h"
+#include "drivers/freertos_driver.h"
+extern UART_HandleTypeDef huart1;
+
 void run() {
 
     /*** Initialize debug routines for usage with FreeRTOS ********************/
@@ -48,6 +52,10 @@ void run() {
     // the object is constructed on first call to get(), so we need to
     // create these tasks here, before starting the scheduler.
     MainTask::get();
+
+    UART uart(&huart1);
+    FreeRTOSDriverTask task("uart", 3, 256, 5, 10);
+    DeviceDriver<FreeRTOSDriverTask, UART> uart_driver(uart, task);
 
     // configASSERT(xTaskCreate(dummyServosTask, "dummy",
     //             configMINIMAL_STACK_SIZE, nullptr, 2, nullptr));
