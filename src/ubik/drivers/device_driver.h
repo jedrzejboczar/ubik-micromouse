@@ -31,6 +31,16 @@ public:
 };
 
 /*
+ * Interface implemented by the DeviceDriver.
+ * It is required to break the cyclic reference when passing the run
+ * method to DriverTask::set_task_runner().
+ */
+class TaskRunner {
+public:
+    virtual void run() = 0;
+};
+
+/*
  * This is the type that is responsible for all the asynchronious
  * operations of a device driver.
  * It should define a type of Queue handles that are sent through
@@ -65,8 +75,7 @@ public:
     // send the response to the queue
     virtual void send_response(pQueue_t response_queue, const void *from_buffer) = 0;
 
-    // this is reimplemented by DeviceDriver
-    virtual void run() = 0;
+    virtual void set_task_runner(TaskRunner *runner) = 0;
 
     // cannot have static pure virtual methods!
     // static bool notify();
@@ -82,7 +91,7 @@ public:
  * thread/task).
  */
 template<typename DriverTask_t, typename Device_t>
-class DeviceDriver {
+class DeviceDriver: TaskRunner {
     // types
     using pQueue_t = typename DriverTask_t::pQueue_t;
     using RequestData_t = typename Device_t::RequestData_t;
@@ -111,7 +120,10 @@ public:
         ResponseData_t data; // e.g. pointer + size
     };
 
-    DeviceDriver(Device_t &device, DriverTask_t &task): device(device), task(task) { }
+
+    DeviceDriver(Device_t &device, DriverTask_t &task): device(device), task(task) {
+        task.set_task_runner(this);
+    }
 
     virtual void run() final {
         device.configure();

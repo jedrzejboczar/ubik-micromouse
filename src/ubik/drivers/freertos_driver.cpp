@@ -5,6 +5,12 @@
 //     run();
 // }
 
+FreeRTOSDriverTask::FreeRTOSDriverTask(
+        const char * name, int priority, int stack_depth,
+        size_t request_queue_length, TickType_t timeout):
+    FreeRTOSTask(name, priority, stack_depth),
+    request_queue_length(request_queue_length), timeout(timeout), runner(nullptr)
+{ }
 
 FreeRTOSDriverTask::pQueue_t FreeRTOSDriverTask::create_queue(
         size_t queue_length, size_t data_size)
@@ -35,4 +41,11 @@ void FreeRTOSDriverTask::send_response(pQueue_t response_queue, const void *from
     (void) result; // the driver doesn't care, we could try multiple times if needed
 }
 
+void FreeRTOSDriverTask::set_task_runner(TaskRunner *runner) {
+    this->runner = runner;
+}
 
+void FreeRTOSDriverTask::task() {
+    configASSERT(runner != nullptr);
+    runner->run();
+}
