@@ -1,6 +1,6 @@
 #pragma once
 
-#include "freeRTOScpp/task_cpp.h"
+#include "freeRTOS_cpp/task_cpp.h"
 #include "event_groups.h"
 
 #include "macros.h"

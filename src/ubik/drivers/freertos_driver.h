@@ -5,7 +5,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
-#include "freeRTOScpp/task_cpp.h"
+#include "freeRTOS_cpp/task_cpp.h"
 
 class FreeRTOSDriverTask:
     public DriverTask<QueueHandle_t>, public FreeRTOSTask
