@@ -12,7 +12,7 @@ FreeRTOSDriverTask::FreeRTOSDriverTask(
     request_queue_length(request_queue_length), timeout(timeout), runner(nullptr)
 { }
 
-FreeRTOSDriverTask::pQueue_t FreeRTOSDriverTask::create_queue(
+QueueHandle_t FreeRTOSDriverTask::create_queue(
         size_t queue_length, size_t data_size)
 {
     return xQueueCreate(queue_length, data_size);
@@ -35,7 +35,7 @@ bool FreeRTOSDriverTask::wait_for_isr() {
     return notification_value != 0;
 }
 
-void FreeRTOSDriverTask::send_response(pQueue_t response_queue, const void *from_buffer) {
+void FreeRTOSDriverTask::send_response(QueueHandle_t response_queue, const void *from_buffer) {
     BaseType_t result = xQueueSend(response_queue,
             from_buffer, portMAX_DELAY); // TODO: how to specify the delay!!!
     (void) result; // the driver doesn't care, we could try multiple times if needed

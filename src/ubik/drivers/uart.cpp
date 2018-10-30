@@ -8,7 +8,7 @@ void UART::configure() {
     (void) 0;
 }
 
-bool UART::start_async(const RequestData_t &data) {
+bool UART::start_async(const DataToSend &data) {
     HAL_StatusTypeDef status = HAL_UART_Transmit_DMA(huart,
             // no comments...
             const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(&data)),
@@ -20,7 +20,7 @@ void UART::abort() {
     HAL_UART_Abort(huart);
 }
 
-void UART::prepare_response(ResponseData_t &data) {
-    data = true;
+void UART::prepare_response(None &data) {
+    (void) data;
 }
 

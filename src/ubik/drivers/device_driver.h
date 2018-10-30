@@ -55,9 +55,11 @@ public:
  * We assume that pQueue_t is a pointer.
  * This is usually the case as we allocate queues on heap returning pointer.
  */
-template<typename pQueue_t>
+template<typename pQueue_T>
 class DriverTask {
 public:
+    using pQueue_t = pQueue_T;
+
     // used to allocate the queue after we know the data size
     // it should either assert creation or provide an inmplementation of
     // receive_request that will never receive
