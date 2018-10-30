@@ -19,7 +19,10 @@ replace_in_file() {
     local replacement="$4"
 
     # replace newlines with literal newline (for sed compatibility)
-    replacement=$(echo "$replacement" | awk '{printf "%s\\n", $0}')
+    # awk: for each line print the line (without newline),
+    #      for each line after the first, print (before this one) a literal newline
+    #      this is to avoid additional newline at the end (to leave rest of file intact)
+    replacement=$(echo "$replacement" | awk '{ if (NR > 1) { printf "\\n" }; printf "%s", $0 }')
 
     # replace part of file between lines matched by the pattern
     # with the given replacement
