@@ -1,7 +1,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-// #include <cstdlib> // TODO: for abs(), deos including this add great overhead?
 #include <cmath>
 #include <cassert>
 #include <limits>
@@ -191,7 +190,15 @@ public:
         return cells[y * Y + x];
     }
 
+    const Cell &cell(size_t x, size_t y) const {
+        return cells[y * Y + x];
+    }
+
     Cell &cell(Position pos) {
+        return cell(pos.x, pos.y);
+    }
+
+    const Cell &cell(Position pos) const {
         return cell(pos.x, pos.y);
     }
 
@@ -214,17 +221,17 @@ public:
         }
     }
 
-    // or should use logical OR?
+    // or should use OR?
     void update_walls(Position pos, Directions walls) {
         cell(pos).walls = walls;
     }
 
-    bool is_in_maze(Position pos) {
+    bool is_in_maze(Position pos) const {
         return (0 <= pos.x) && (pos.x < static_cast<int8_t>(X))
             && (0 <= pos.y) && (pos.y < static_cast<int8_t>(Y));
     }
 
-    Position neighbour(Position pos, Dir dir) {
+    Position neighbour(Position pos, Dir dir) const {
         switch (dir) {
             case Dir::N: pos.y += 1; break;
             case Dir::S: pos.y -= 1; break;
@@ -235,38 +242,66 @@ public:
         return pos;
     }
 
-    Directions available_neighbours(Position pos) {
+    Directions reachable_neighbours(Position pos) const {
         Directions avalable = ~cell(pos).walls;
         // remove invalid
-        for (Dir dir = Dir::FIRST; dir < Dir::COUNT; ++dir) {
+        for (Dir dir = Dir::FIRST; dir < Dir::COUNT; ++dir)
             if (!is_in_maze(neighbour(pos, dir)))
                 avalable &= ~Directions(dir);
-        }
         return avalable;
     }
 
-    weight_t lowest_weight(Position pos, Directions neighbours)  {
+    weight_t lowest_weight(Position pos, Directions neighbours) const {
         weight_t min_weight = std::numeric_limits<weight_t>::max();
-        for (Dir dir = Dir::FIRST; dir < Dir::COUNT; ++dir) {
+        for (Dir dir = Dir::FIRST; dir < Dir::COUNT; ++dir)
             if (neighbours & dir) { // if we consider neighbour in this direction
                 weight_t weight = cell(neighbour(pos, dir)).weight;
                 min_weight = std::min(min_weight, weight);
             }
-        }
+        return min_weight;
+    }
+
+    Directions lowest_weight_directions(Position pos, Directions possible) {
+        weight_t min_weight = lowest_weight(pos, possible);
+        for (Dir dir = Dir::FIRST; dir < Dir::COUNT; ++dir)
+            if (possible & dir)
+                // remove from possible if weight is not lowest
+                if (cell(neighbour(pos, dir)).weight != min_weight)
+                    possible &= ~Directions(dir);
+        return possible;
+    }
+
+    void push_neigbours(Stack<Position> &stack, Position pos, Directions neighbours) {
+        for (Dir dir = Dir::FIRST; dir < Dir::COUNT; ++dir)
+            if (neighbours & dir)
+                stack.push(neighbour(pos, dir));
     }
 
     void flood_fill(Position pos) {
+        // start by pushing current position onto the stack
         stack.empty();
         stack.push(pos);
+        // continue until the stack is empty
         while (!stack.is_empty()) {
             pos = stack.pop();
-            Directions neighbours = available_neighbours(pos);
-            // auto min_weight = std::min_element(cells, cells + n_cells(), cmp)->weight;
+            // omit this cell if it is one of targets (TODO: is this for sure ok?)
+            bool is_target = cell(pos).weight == 0;
+            if (!is_target) {
+                // find the lowest weight across reachable neighbours
+                Directions neighbours = reachable_neighbours(pos);
+                weight_t min_weight = lowest_weight(pos, neighbours);
+                // push the neighbours if the weights around this cell are not consistent
+                bool weights_consistent = cell(pos).weight != min_weight + 1;
+                if (!weights_consistent)
+                    push_neigbours(stack, pos, neighbours);
+            }
         }
     }
 };
 
 Directions read_walls();
+Dir choose_best_direction(Directions possible);
+void move_in_direction(Dir dir);
 
 Position go_from_to(Maze &maze, Position from, TargetPosition to) {
     maze.init_weights_to_target(to);
@@ -277,19 +312,21 @@ Position go_from_to(Maze &maze, Position from, TargetPosition to) {
         maze.update_walls(pos, read_walls());
         maze.flood_fill(pos);
         // get all the directions that have minimal weight
-        Directions available_directions = maze.best_directions(pos);
+        Directions available_directions = maze.reachable_neighbours(pos);
+        Directions considered_directions = maze.lowest_weight_directions(pos, available_directions);
 
         // choose a direction based on robot orientation and other possible conditions
-        Directions dir = choose_best_direction(available_directions);
+        Dir dir = choose_best_direction(considered_directions);
         move_in_direction(dir);
-        /**** OR ****/
-        // send them to the controller and allow it to choose priority
-        send_available_directions(available_directions);
-        // wait until we have new reliable data about the walls (basically, when we are at next frame)
-        wait_for_new_cell_walls();
+
+        // [>*** OR ***<]
+        // // send them to the controller and allow it to choose priority
+        // send_available_directions(considered_directions);
+        // // wait until we have new reliable data about the walls (basically, when we are at next frame)
+        // wait_for_new_cell_walls();
 
         // update current position
-        pos = get_position_in_direction(pos, dir);
+        pos = maze.neighbour(pos, dir);
     }
 
     return pos;
