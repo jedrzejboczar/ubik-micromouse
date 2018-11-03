@@ -116,7 +116,16 @@ int main(void)
   /* Configure the system clock */
   SystemClock_Config();
 
-  /* USER CODE BEGIN SysInit */
+   /* USER CODE BEGIN SysInit */
+
+  /* Disable SysTick before it shoots!
+   *
+   * In FreeRTOSConfig.h SysTick_Handler is mapped to xPortSysTickHandler
+   * so we cannot let SysTick fire its interrupt before starting FreeRTOS
+   * scheduler. In Cube we changed System Timebase to some other timer, so
+   * we can safely disable SysTick here. FreeRTOS will configure it when
+   * it starts.  */
+  CLEAR_BIT(SysTick->CTRL, SysTick_CTRL_ENABLE_Msk);
 
   /* USER CODE END SysInit */
 
@@ -141,11 +150,6 @@ int main(void)
   Error_Handler();
 
   /* USER CODE END 2 */
-
-
-
-
-
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -540,10 +544,10 @@ static void MX_DMA_Init(void)
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 8, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
   /* DMA1_Channel4_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 10, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
   /* DMA1_Channel5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 10, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
   /* DMA1_Channel6_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 9, 0);

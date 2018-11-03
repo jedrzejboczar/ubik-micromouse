@@ -3,7 +3,7 @@
 ### see: https://www.freertos.org/Creating-a-new-FreeRTOS-project.html
 
 # Definitions
-set(FREERTOS_MEMORY_MENAGEMENT_SCHEME "1")
+set(FREERTOS_MEMORY_MENAGEMENT_SCHEME "4")
 set(FREERTOS_COMPILER "GCC")
 set(FREERTOS_ARCHITECTURE "ARM_CM3")
 

@@ -1,5 +1,14 @@
 #include "maze.h"
 
+#if defined(MAZE_TESTING)
+#include <iostream>
+#include <thread>
+#include <iomanip>
+#include <string>
+#include <chrono>
+#endif
+
+
 namespace maze {
 
 Maze::Maze(size_t X, size_t Y, Cell cells[], Stack<Position> &stack):
@@ -27,7 +36,7 @@ Position Maze::go_from_to(Position from, TargetPosition to) {
         // // wait until we have new reliable data about the walls (basically, when we are at next frame)
         // wait_for_new_cell_walls();
 
-#if MAZE_TESTING == 1
+#if defined(MAZE_TESTING)
         std::cout << std::string(X * 6, '-') << std::endl;
         print(pos, Position(to.x, to.y));
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -149,10 +158,10 @@ void Maze::flood_fill(Position pos) {
             if (!weights_consistent) {
                 cell(pos).weight += 1;
                 push_neigbours(stack, pos, neighbours);
-#if MAZE_TESTING == 1
+#if defined(MAZE_TESTING)
                 std::cout << std::string(X * 6, '-') << std::endl;
                 print(Position(-1, -1), pos);
-                std::this_thread::sleep_for(std::chrono::milliseconds(000));
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
 #endif
             }
         }
@@ -160,7 +169,7 @@ void Maze::flood_fill(Position pos) {
 }
 
 
-#if MAZE_TESTING == 1
+#if defined(MAZE_TESTING)
 void Maze::print(Position current, Position target) {
     std::ostringstream ss;
 
