@@ -13,7 +13,16 @@ static_assert(pdPASS == true, "FreeRTOS pdPASS was assumed to be equal to 'true'
 static_assert(pdFALSE == false, "FreeRTOS pdFALSE was assumed to be equal to 'false'");
 static_assert(pdFALSE == 0, "FreeRTOS pdFALSE was assumed to be equal to '0'");
 
+
+/*
+ * Using STM32CubeMX code generation, so we assume that UART is properly
+ * configured, with DMA and an interrupt.
+ */
+extern UART_HandleTypeDef huart1;
+
 namespace logging {
+
+static UART_HandleTypeDef &log_uart = huart1;
 
 /*
  * The whole logging interface is lazily initialized on the first
@@ -26,13 +35,6 @@ constexpr size_t task_stack_size = configMINIMAL_STACK_SIZE;
 constexpr size_t queue_length = 10;
 QueueHandle_t log_queue = nullptr;
 TaskHandle_t log_task = nullptr;
-
-/*
- * Using STM32CubeMX code generation, so we assume that UART is properly
- * configured, with DMA and an interrupt.
- */
-extern UART_HandleTypeDef huart1;
-static UART_HandleTypeDef &log_uart = huart1;
 
 uint32_t logs_lost;
 uint32_t logs_lost_from_uart_errors;
@@ -119,6 +121,10 @@ void logger_task(void *) {
             HAL_UART_Abort(&log_uart);
             continue;
         };
+
+        // delete memory if required
+        if (buf.is_owner)
+            delete [] buf.data;
     }
 }
 
