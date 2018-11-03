@@ -11,7 +11,7 @@ Position Maze::go_from_to(Position from, TargetPosition to) {
 
     while (cell(pos).weight > 0) {
         // analyze current sensors readings (or from near past)
-        update_walls(pos, read_walls());
+        update_walls(pos, read_walls(pos));
         flood_fill(pos);
         // get all the directions that have minimal weight
         Directions available_directions = reachable_neighbours(pos);
@@ -26,6 +26,12 @@ Position Maze::go_from_to(Position from, TargetPosition to) {
         // send_available_directions(considered_directions);
         // // wait until we have new reliable data about the walls (basically, when we are at next frame)
         // wait_for_new_cell_walls();
+
+#if MAZE_TESTING == 1
+        std::cout << std::string(X * 6, '-') << std::endl;
+        print(pos, Position(to.x, to.y));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+#endif
 
         // update current position
         pos = neighbour(pos, dir);
@@ -91,12 +97,12 @@ Position Maze::neighbour(Position pos, Dir dir) const {
 }
 
 Directions Maze::reachable_neighbours(Position pos) const {
-    Directions avalable = ~cell(pos).walls;
+    Directions available = ~cell(pos).walls;
     // remove invalid
     for (Dir dir = Dir::FIRST; dir < Dir::COUNT; ++dir)
         if (!is_in_maze(neighbour(pos, dir)))
-            avalable &= ~Directions(dir);
-    return avalable;
+            available &= ~Directions(dir);
+    return available;
 }
 
 weight_t Maze::lowest_weight(Position pos, Directions neighbours) const {
@@ -139,12 +145,45 @@ void Maze::flood_fill(Position pos) {
             Directions neighbours = reachable_neighbours(pos);
             weight_t min_weight = lowest_weight(pos, neighbours);
             // push the neighbours if the weights around this cell are not consistent
-            bool weights_consistent = cell(pos).weight != min_weight + 1;
-            if (!weights_consistent)
+            bool weights_consistent = cell(pos).weight == min_weight + 1;
+            if (!weights_consistent) {
+                cell(pos).weight += 1;
                 push_neigbours(stack, pos, neighbours);
+#if MAZE_TESTING == 1
+                std::cout << std::string(X * 6, '-') << std::endl;
+                print(Position(-1, -1), pos);
+                std::this_thread::sleep_for(std::chrono::milliseconds(000));
+#endif
+            }
         }
     }
 }
 
+
+#if MAZE_TESTING == 1
+void Maze::print(Position current, Position target) {
+    std::ostringstream ss;
+
+    for (int y = Y-1; y >= 0; --y) {
+        for (int x = 0; x < X; x++)
+            ss << "+" << ((cell(x, y).walls & Dir::N) ? "----" : "    ") << "+";
+        ss << "\n";
+        for (int x = 0; x < X; x++) {
+            bool target_now = target.x == x && target.y == y;
+            bool current_now = current.x == x && current.y == y;
+            ss << ((cell(x, y).walls & Dir::W) ? "|" : " ")
+                << std::setw(3) << (int) cell(x, y).weight
+                << (current_now ? "@" : target_now ? "$" : " ")
+                << ((cell(x, y).walls & Dir::E) ? "|" : " ");
+        }
+        ss << "\n";
+        for (int x = 0; x < X; x++)
+            ss << "+" << ((cell(x, y).walls & Dir::S) ? "----" : "    ") << "+";
+        ss << "\n";
+    }
+
+    std::cout << ss.str() << std::endl;
+}
+#endif
 
 } // namespace maze
