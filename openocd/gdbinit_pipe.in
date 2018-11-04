@@ -6,6 +6,9 @@ target remote | openocd -f @OPENOCD_CONNECT@ -f @OPENOCD_GDB@
 # reset and stop execution
 monitor reset halt
 
+# upload binary
+load
+
 # ### SEMIHOSTING
 #
 # # monitor arm semihosting enable
