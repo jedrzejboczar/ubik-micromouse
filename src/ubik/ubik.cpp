@@ -7,7 +7,26 @@
 void run();
 extern "C" void extern_main(void) { run(); }
 
+void* operator new(size_t size) {
+    void *memory = pvPortMalloc(size);
+#ifdef	__EXCEPTIONS
+    if (memory == 0) // did pvPortMalloc succeed?
+        throw std::bad_alloc(); // ANSI/ISO compliant behavior
+#endif
+    return memory;
+}
+void operator delete(void *memory) noexcept
+{
+    vPortFree(memory);
+}
+void operator delete(void *memory, size_t) { // ? required by C++14 ?
+    vPortFree(memory);
+}
+
 void dummy_task(void *) {
+    // we need to set the bluetooth pin "Key" to HIGH to enable normal mode
+    HAL_GPIO_WritePin(BT_Key_GPIO_Port, BT_Key_Pin, GPIO_PIN_SET);
+
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(1000));
 
@@ -18,7 +37,7 @@ void dummy_task(void *) {
                 heap_size_remaining / (1<<10), heap_size_remaining);
         logging::log(logging::Buffer{buf, 50, true});
 
-        vTaskDelay(pdMS_TO_TICKS(3000));
+        // vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 

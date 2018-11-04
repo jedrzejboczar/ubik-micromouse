@@ -37,7 +37,7 @@ stm32_add_hex_bin_targets(${CMAKE_PROJECT_NAME})
 stm32_print_size_of_targets(${CMAKE_PROJECT_NAME})
 stm32_add_dump_target(${CMAKE_PROJECT_NAME})
 # openocd related commands
-openocd_configure_files("stlink-v2" "stm32f4x")
+openocd_configure_files("stlink-v2" "stm32f1x")
 openocd_add_flash_target(${CMAKE_PROJECT_NAME})
 openocd_add_gdb_target(${CMAKE_PROJECT_NAME})
 

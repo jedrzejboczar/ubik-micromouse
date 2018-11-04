@@ -36,6 +36,7 @@ constexpr size_t queue_length = 10;
 QueueHandle_t log_queue = nullptr;
 TaskHandle_t log_task = nullptr;
 
+// stats
 uint32_t logs_lost;
 uint32_t logs_lost_from_uart_errors;
 uint32_t logs_lost_from_notification_timeouts;
@@ -90,7 +91,8 @@ bool log_from_isr(Buffer buf, bool &should_yield) {
 static size_t ticks_per_size(size_t uart_baudrate, size_t size) {
     constexpr float margin = 0.3;
     float ms_per_byte = 1000.0 / uart_baudrate;
-    return pdMS_TO_TICKS(ms_per_byte) * size * (1 + margin);
+    // TODO: check how long it takes and try to better estimate time!
+    return pdMS_TO_TICKS(ms_per_byte) * size * (1 + margin)      /*remove this:*/+ 10;
 }
 
 static void notify_from_isr(bool &should_yield) {
@@ -110,17 +112,15 @@ void logger_task(void *) {
             // it would mean that our internal waiting for transmision complete
             // interrupt has failed so we'd rather clean up and continue
             HAL_UART_Abort(&log_uart);
-            continue;
+        } else {
+            // for simplicity assume that huart.Init is consistent with register values
+            size_t ticks_to_wait = ticks_per_size(log_uart.Init.BaudRate, buf.size);
+
+            if (ulTaskNotifyTake(pdTRUE, ticks_to_wait) == 0) {
+                logs_lost_from_notification_timeouts++;
+                HAL_UART_Abort(&log_uart);
+            };
         }
-
-        // for simplicity assume that huart.Init is consistent with register values
-        size_t ticks_to_wait = ticks_per_size(log_uart.Init.BaudRate, buf.size);
-
-        if (ulTaskNotifyTake(pdTRUE, ticks_to_wait) == 0) {
-            logs_lost_from_notification_timeouts++;
-            HAL_UART_Abort(&log_uart);
-            continue;
-        };
 
         // delete memory if required
         if (buf.is_owner)

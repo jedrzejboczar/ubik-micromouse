@@ -7,4 +7,7 @@ transport select hla_swd
 
 source [find target/@OPENOCD_TARGET@.cfg]
 
-reset_config srst_only
+# instead of:
+# reset_config srst_only
+# for this project use this:
+reset_config none separate
