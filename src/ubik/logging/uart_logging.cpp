@@ -95,9 +95,9 @@ bool log_from_isr(Msg msg, bool &should_yield) {
 }
 
 bool log_blocking(Msg msg) {
-    size_t string_size = strlen(reinterpret_cast<char *>(msg.data));
+    size_t string_size = strlen(msg.as_chars());
     uint32_t timeout = millis_per_size(log_uart.Init.BaudRate, string_size);
-    bool result = HAL_UART_Transmit(&log_uart, msg.data, msg.size, timeout) == HAL_OK;
+    bool result = HAL_UART_Transmit(&log_uart, msg.data, string_size, timeout) == HAL_OK;
     msg.delete_if_owned();
     return result;
 }
@@ -111,7 +111,7 @@ void logger_task(void *) {
         if (xQueueReceive(log_queue, &msg, portMAX_DELAY) != pdPASS)
             continue;
 
-        size_t string_size = strlen(reinterpret_cast<char *>(msg.data));
+        size_t string_size = strlen(msg.as_chars());
 
         if (HAL_UART_Transmit_DMA(&log_uart, msg.data, string_size) != HAL_OK) {
             logs_lost_from_uart_errors++;
