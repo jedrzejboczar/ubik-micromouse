@@ -79,9 +79,9 @@ extern void vApplicationConfigAssertFailedHook(const char *file, int line);
 #define configUSE_DAEMON_TASK_STARTUP_HOOK       0
 
 /* Stats gathering (good for development phase) */
-#define configGENERATE_RUN_TIME_STATS            0
-#define configUSE_TRACE_FACILITY                 0
-#define configUSE_STATS_FORMATTING_FUNCTIONS     0
+#define configGENERATE_RUN_TIME_STATS            1
+#define configUSE_TRACE_FACILITY                 1
+#define configUSE_STATS_FORMATTING_FUNCTIONS     1
 #define configCHECK_FOR_STACK_OVERFLOW           2  // requires hook function
 
 /* Dummy implementation that should be adjusted when
@@ -92,6 +92,10 @@ extern void vApplicationConfigAssertFailedHook(const char *file, int line);
  * */
 // #define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS() { (void) 0; }
 // #define portGET_RUN_TIME_COUNTER_VALUE() (1)
+extern void configure_timer_for_runtime_stats(void);
+extern uint32_t get_runtime_counter_value(void);
+#define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS() { configure_timer_for_runtime_stats(); }
+#define portGET_RUN_TIME_COUNTER_VALUE() ( get_runtime_counter_value() )
 
 /* Co-routine definitions. */
 #define configUSE_CO_ROUTINES                    0

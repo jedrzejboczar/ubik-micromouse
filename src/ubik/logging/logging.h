@@ -29,11 +29,12 @@ struct Msg: Buffer {
 /* Send logging message from the buffer. Asynchronious.
  *
  * (!) This will lazily initialise logging backend when first called.
- * Returns false when the internal queue is full (does not wait).
+ * By default does not wait for place in the queue if it is full,
+ * but returns false. If block=true, will wait forever.
  * Anyway, the buffer is taken by this function, so when
  * is_owner=true, the buffer will be deleted!
  */
-bool log(Msg msg);
+bool log(Msg msg, bool block=false);
 
 /* Send logging message from the buffer. Syncronious.
  *

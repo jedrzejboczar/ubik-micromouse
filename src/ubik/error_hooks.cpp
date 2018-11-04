@@ -42,6 +42,8 @@ void vApplicationMallocFailedHook( void ) {
             "[# ERROR #] FreeRTOS malloc failed\n");
     logging::log_blocking(msg);
 
+    vTaskSuspendAll();
+
     while (1) {
         blinkErrorLED(5, 200);
         dumb_delay(1000);

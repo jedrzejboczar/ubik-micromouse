@@ -7,6 +7,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
+#include "semphr.h"
 
 // needed in assumptions about freertos for conversion to bool
 static_assert(pdTRUE == true, "FreeRTOS pdTRUE was assumed to be equal to 'true'");
@@ -34,9 +35,10 @@ static UART_HandleTypeDef &log_uart = huart1;
  */
 constexpr size_t task_priority = 1;
 constexpr size_t task_stack_size = configMINIMAL_STACK_SIZE;
-constexpr size_t queue_length = 10;
+constexpr size_t queue_length = 3;
 QueueHandle_t log_queue = nullptr;
 TaskHandle_t log_task = nullptr;
+SemaphoreHandle_t log_guard = nullptr;
 
 // stats
 uint32_t logs_lost;
@@ -56,37 +58,43 @@ void initialise() {
     // ignore subsequent calls
     if (log_queue != nullptr)
         return;
+    // queue and mutex
     log_queue = xQueueCreate(queue_length, sizeof(Msg));
+    log_guard = xSemaphoreCreateMutex();
     configASSERT(log_queue != nullptr);
+    configASSERT(log_guard != nullptr);
+    // task
     bool task_created = xTaskCreate(logger_task, "Logging",
             task_stack_size, nullptr,
             task_priority, &log_task) == pdPASS;
     configASSERT(task_created);
 }
 
-bool log(Msg msg) {
+bool log(Msg msg, bool block) {
     // lazy initialization of the module
     if (log_queue == nullptr)
         initialise();
-    bool result = xQueueSend(log_queue, &msg, 0) == pdPASS;
+    BaseType_t timeout = block ? portMAX_DELAY : 0;
+    bool result = xQueueSend(log_queue, &msg, timeout) == pdPASS;
     // if the call didn't succeed, we have to free memory here
     if (!result)
         msg.delete_if_owned();
+    // stats
     if (!result) logs_lost++;
     return result;
 }
 
 bool log_from_isr(Msg msg, bool &should_yield) {
+    bool result = false;
     // ignore call when not yet initialsed
-    if (log_queue == nullptr) {
-        logs_lost_from_isr++;
-        return false;
+    if (log_queue != nullptr) {
+        result = xQueueSendFromISR(log_queue, &msg,
+                // will set should_yield if needed, else not change
+                reinterpret_cast<BaseType_t*>(&should_yield)) == pdPASS;
+        if (!result)
+            msg.delete_if_owned();
     }
-    bool result = xQueueSendFromISR(log_queue, &msg,
-            // will set should_yield if needed, else not change
-            reinterpret_cast<BaseType_t*>(&should_yield)) == pdPASS;
-    if (!result)
-        msg.delete_if_owned();
+    // stats
     if (!result) {
         logs_lost++;
         logs_lost_from_isr++;
@@ -95,10 +103,40 @@ bool log_from_isr(Msg msg, bool &should_yield) {
 }
 
 bool log_blocking(Msg msg) {
-    size_t string_size = strlen(msg.as_chars());
-    uint32_t timeout = millis_per_size(log_uart.Init.BaudRate, string_size);
-    bool result = HAL_UART_Transmit(&log_uart, msg.data, string_size, timeout) == HAL_OK;
-    msg.delete_if_owned();
+    bool result = false;
+
+    if (log_guard == nullptr)
+        initialise();
+
+    // to allow blocking writes (mainly for debugging)
+    // we have to take the guard so that the task won't write anything
+    bool must_take_guard = xTaskGetSchedulerState() == taskSCHEDULER_RUNNING;
+    bool guard_taken = false;
+    if (must_take_guard) {
+        if (xSemaphoreTake(log_guard, portMAX_DELAY) == pdPASS)
+            guard_taken = true;
+    }
+
+    if (guard_taken || !must_take_guard) {
+        size_t string_size = strlen(msg.as_chars());
+        uint32_t timeout = millis_per_size(log_uart.Init.BaudRate, string_size);
+        result = HAL_UART_Transmit(&log_uart, msg.data, string_size, timeout) == HAL_OK;
+        msg.delete_if_owned();
+    }
+
+    // release guard if needed
+    if (guard_taken) {
+        // this could only fail if we didn't take the semaphore earlier
+        bool could_give = xSemaphoreGive(log_guard) == pdPASS;
+        configASSERT(could_give);
+    }
+
+    // stats
+    if (!result) {
+        logs_lost++;
+        logs_lost_from_isr++;
+    }
+
     return result;
 }
 
@@ -111,26 +149,36 @@ void logger_task(void *) {
         if (xQueueReceive(log_queue, &msg, portMAX_DELAY) != pdPASS)
             continue;
 
-        size_t string_size = strlen(msg.as_chars());
+        bool guard_taken = xSemaphoreTake(log_guard, portMAX_DELAY) == pdPASS;
 
-        if (HAL_UART_Transmit_DMA(&log_uart, msg.data, string_size) != HAL_OK) {
-            logs_lost_from_uart_errors++;
-            // of cource it could have happend that we got HAL_BUSY, but
-            // it would mean that our internal waiting for transmision complete
-            // interrupt has failed so we'd rather clean up and continue
-            HAL_UART_Abort(&log_uart);
-        } else {
-            // for simplicity assume that huart.Init is consistent with register values
-            size_t ticks_to_wait = pdMS_TO_TICKS(millis_per_size(log_uart.Init.BaudRate, string_size));
+        if (guard_taken) {
+            size_t string_size = strlen(msg.as_chars());
 
-            if (ulTaskNotifyTake(pdTRUE, ticks_to_wait) == 0) {
-                logs_lost_from_notification_timeouts++;
+            // start write operation using DMA
+            if (HAL_UART_Transmit_DMA(&log_uart, msg.data, string_size) != HAL_OK) {
+                logs_lost_from_uart_errors++;
+                // of cource it could have happend that we got HAL_BUSY, but
+                // it would mean that our internal waiting for transmision complete
+                // interrupt has failed so we'd rather clean up and continue
                 HAL_UART_Abort(&log_uart);
-            };
+            } else {
+                // for simplicity assume that huart.Init is consistent with register values
+                size_t ticks_to_wait = pdMS_TO_TICKS(millis_per_size(log_uart.Init.BaudRate, string_size));
+
+                if (ulTaskNotifyTake(pdTRUE, ticks_to_wait) == 0) {
+                    logs_lost_from_notification_timeouts++;
+                    HAL_UART_Abort(&log_uart);
+                };
+            }
+
         }
 
         // delete memory if required
         msg.delete_if_owned();
+
+        // this could only fail if we didn't take the semaphore earlier
+        bool guard_given = xSemaphoreGive(log_guard) == pdPASS;
+        configASSERT(guard_given);
     }
 }
 
@@ -139,7 +187,7 @@ static size_t millis_per_size(size_t uart_baudrate, size_t size) {
     constexpr float margin = 0.3;
     float ms_per_byte = 1000.0 / uart_baudrate;
     // TODO: check how long it takes and try to better estimate time!
-    return pdMS_TO_TICKS(ms_per_byte) * size * (1 + margin)      /*remove this:*/+ 10;
+    return pdMS_TO_TICKS(ms_per_byte) * size * (1 + margin)      /*remove this:*/+ 100;
 }
 
 static void notify_from_isr(bool &should_yield) {
