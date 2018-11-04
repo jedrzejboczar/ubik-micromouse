@@ -57,9 +57,6 @@ void run() {
     // DEBUG_FREERTOS_INIT();
     // D_PRINT("Hello world!\n");
 
-    // we need to set the bluetooth pin "Key" to HIGH to enable normal mode
-    HAL_GPIO_WritePin(BT_Key_GPIO_Port, BT_Key_Pin, GPIO_PIN_SET);
-
     /*** Prepare FreeRTOS tasks ***********************************************/
 
     // Most tasks are implemented as singletons with lazy-evaluation, i.e.

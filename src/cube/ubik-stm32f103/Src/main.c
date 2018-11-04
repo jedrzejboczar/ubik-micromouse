@@ -116,7 +116,7 @@ int main(void)
   /* Configure the system clock */
   SystemClock_Config();
 
-   /* USER CODE BEGIN SysInit */
+  /* USER CODE BEGIN SysInit */
 
   /* Disable SysTick before it shoots!
    *
@@ -584,7 +584,10 @@ static void MX_GPIO_Init(void)
                           |ENC1_Cs_Pin|MOT1_Dir2_Pin|MOT2_Dir2_Pin|MOT2_Dir1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, ENC2_Cs_Pin|BT_Key_Pin|MOT1_Dir1_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, ENC2_Cs_Pin|MOT1_Dir1_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(BT_Key_GPIO_Port, BT_Key_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin : LS_Power_Pin */
   GPIO_InitStruct.Pin = LS_Power_Pin;
