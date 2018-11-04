@@ -6,9 +6,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-
-// #include "debug/printing.h"
-#define D_PRINT(...) (void) 0;
+#include "logging/logging.h"
 
 extern "C" {
 
@@ -17,14 +15,16 @@ void dumb_delay(uint32_t ms);
 // use red LED to indicate error
 void blinkErrorLED(int n_times, int delay_ms);
 
-
-
 void vApplicationStackOverflowHook( TaskHandle_t xTask, signed char *pcTaskName ) {
     (void) xTask;
     (void) pcTaskName;
 
-    D_PRINT("ERROR: FreeRTOS stack overflow! task_name = %s\n", pcTaskName);
     taskDISABLE_INTERRUPTS();
+
+    uint8_t buf[250];
+    snprintf(reinterpret_cast<char *>(buf), sizeof(buf),
+            "[# ERROR #] FreeRTOS stack overflow, task = %s\n", pcTaskName);
+    logging::log_blocking(logging::Buffer::from_static(buf));
 
     while (1) {
         blinkErrorLED(2, 200);
@@ -33,9 +33,12 @@ void vApplicationStackOverflowHook( TaskHandle_t xTask, signed char *pcTaskName 
 }
 
 void vApplicationMallocFailedHook( void ) {
-
-    D_PRINT("ERROR: FreeRTOS malloc failed!\n");
     taskDISABLE_INTERRUPTS();
+
+    uint8_t buf[250];
+    snprintf(reinterpret_cast<char *>(buf), sizeof(buf),
+            "[# ERROR #] FreeRTOS malloc failed\n");
+    logging::log_blocking(logging::Buffer::from_static(buf));
 
     while (1) {
         blinkErrorLED(5, 200);
@@ -44,9 +47,12 @@ void vApplicationMallocFailedHook( void ) {
 }
 
 void vApplicationConfigAssertFailedHook(const char *file, int line) {
-
-    D_PRINT("ERROR: configASSERT failed! file = %s:%d\n", file, line);
     taskDISABLE_INTERRUPTS();
+
+    uint8_t buf[250];
+    snprintf(reinterpret_cast<char *>(buf), sizeof(buf),
+            "[# ERROR #] asserion failed at %s:%d\n", file, line);
+    logging::log_blocking(logging::Buffer::from_static(buf));
 
     while (1) {
         blinkErrorLED(1, 200);

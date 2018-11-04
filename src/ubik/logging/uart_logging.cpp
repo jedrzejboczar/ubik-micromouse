@@ -1,5 +1,7 @@
 #include "logging.h"
 
+#include <cstring>
+
 #include "stm32f1xx.h"
 
 #include "FreeRTOS.h"
@@ -44,6 +46,9 @@ uint32_t logs_lost_from_isr;
 
 // task entry function
 void logger_task(void *);
+// local functions
+static size_t millis_per_size(size_t uart_baudrate, size_t size);
+static void notify_from_isr(bool &should_yield);
 
 /******************************************************************************/
 
@@ -53,11 +58,10 @@ void initialise() {
         return;
     log_queue = xQueueCreate(queue_length, sizeof(Buffer));
     configASSERT(log_queue != nullptr);
-    configASSERT(
-            xTaskCreate(logger_task, "Logging",
-                task_stack_size, nullptr,
-                task_priority, &log_task) == pdPASS
-            );
+    bool task_created = xTaskCreate(logger_task, "Logging",
+            task_stack_size, nullptr,
+            task_priority, &log_task) == pdPASS;
+    configASSERT(task_created);
 }
 
 bool log(Buffer buf) {
@@ -65,6 +69,9 @@ bool log(Buffer buf) {
     if (log_queue == nullptr)
         initialise();
     bool result = xQueueSend(log_queue, &buf, 0) == pdPASS;
+    // if the call didn't succeed, we have to free memory here
+    if (!result && buf.is_owner)
+        delete [] buf.data;
     if (!result) logs_lost++;
     return result;
 }
@@ -85,19 +92,16 @@ bool log_from_isr(Buffer buf, bool &should_yield) {
     return result;
 }
 
+bool log_blocking(Buffer buf) {
+    size_t string_size = strlen(reinterpret_cast<char *>(buf.data));
+    uint32_t timeout = millis_per_size(log_uart.Init.BaudRate, string_size);
+    bool result = HAL_UART_Transmit(&log_uart, buf.data, buf.size, timeout) == HAL_OK;
+    if (buf.is_owner)
+        delete [] buf.data;
+    return result;
+}
+
 /******************************************************************************/
-
-// baudrate [bytes/sec], size - number of bytes to be sent
-static size_t ticks_per_size(size_t uart_baudrate, size_t size) {
-    constexpr float margin = 0.3;
-    float ms_per_byte = 1000.0 / uart_baudrate;
-    // TODO: check how long it takes and try to better estimate time!
-    return pdMS_TO_TICKS(ms_per_byte) * size * (1 + margin)      /*remove this:*/+ 10;
-}
-
-static void notify_from_isr(bool &should_yield) {
-    vTaskNotifyGiveFromISR(log_task, reinterpret_cast<BaseType_t*>(&should_yield));
-}
 
 void logger_task(void *) {
     Buffer buf;
@@ -106,7 +110,9 @@ void logger_task(void *) {
         if (xQueueReceive(log_queue, &buf, portMAX_DELAY) != pdPASS)
             continue;
 
-        if (HAL_UART_Transmit_DMA(&log_uart, buf.data, buf.size) != HAL_OK) {
+        size_t string_size = strlen(reinterpret_cast<char *>(buf.data));
+
+        if (HAL_UART_Transmit_DMA(&log_uart, buf.data, string_size) != HAL_OK) {
             logs_lost_from_uart_errors++;
             // of cource it could have happend that we got HAL_BUSY, but
             // it would mean that our internal waiting for transmision complete
@@ -114,7 +120,7 @@ void logger_task(void *) {
             HAL_UART_Abort(&log_uart);
         } else {
             // for simplicity assume that huart.Init is consistent with register values
-            size_t ticks_to_wait = ticks_per_size(log_uart.Init.BaudRate, buf.size);
+            size_t ticks_to_wait = pdMS_TO_TICKS(millis_per_size(log_uart.Init.BaudRate, string_size));
 
             if (ulTaskNotifyTake(pdTRUE, ticks_to_wait) == 0) {
                 logs_lost_from_notification_timeouts++;
@@ -126,6 +132,18 @@ void logger_task(void *) {
         if (buf.is_owner)
             delete [] buf.data;
     }
+}
+
+// baudrate [bytes/sec], size - number of bytes to be sent
+static size_t millis_per_size(size_t uart_baudrate, size_t size) {
+    constexpr float margin = 0.3;
+    float ms_per_byte = 1000.0 / uart_baudrate;
+    // TODO: check how long it takes and try to better estimate time!
+    return pdMS_TO_TICKS(ms_per_byte) * size * (1 + margin)      /*remove this:*/+ 10;
+}
+
+static void notify_from_isr(bool &should_yield) {
+    vTaskNotifyGiveFromISR(log_task, reinterpret_cast<BaseType_t*>(&should_yield));
 }
 
 // ubik has only one UART used, so just declare it here

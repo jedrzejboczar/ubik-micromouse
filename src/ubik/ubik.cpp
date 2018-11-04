@@ -7,37 +7,17 @@
 void run();
 extern "C" void extern_main(void) { run(); }
 
-void* operator new(size_t size) {
-    void *memory = pvPortMalloc(size);
-#ifdef	__EXCEPTIONS
-    if (memory == 0) // did pvPortMalloc succeed?
-        throw std::bad_alloc(); // ANSI/ISO compliant behavior
-#endif
-    return memory;
-}
-void operator delete(void *memory) noexcept
-{
-    vPortFree(memory);
-}
-void operator delete(void *memory, size_t) { // ? required by C++14 ?
-    vPortFree(memory);
-}
-
 void dummy_task(void *) {
-    // we need to set the bluetooth pin "Key" to HIGH to enable normal mode
-    HAL_GPIO_WritePin(BT_Key_GPIO_Port, BT_Key_Pin, GPIO_PIN_SET);
 
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(1000));
 
         volatile size_t heap_size_remaining = xPortGetFreeHeapSize();
-        uint8_t *buf = new uint8_t[50];
-        snprintf(reinterpret_cast<char *>(buf), 50,
+        logging::Buffer buf = logging::Buffer::dynamic(60);
+        snprintf(reinterpret_cast<char *>(buf.data), buf.size,
                 "Remaining heap size = %u KB (%u B)\n",
                 heap_size_remaining / (1<<10), heap_size_remaining);
-        logging::log(logging::Buffer{buf, 50, true});
-
-        // vTaskDelay(pdMS_TO_TICKS(1000));
+        logging::log(buf);
     }
 }
 
@@ -54,14 +34,18 @@ void run() {
     // DEBUG_FREERTOS_INIT();
     // D_PRINT("Hello world!\n");
 
+    // we need to set the bluetooth pin "Key" to HIGH to enable normal mode
+    HAL_GPIO_WritePin(BT_Key_GPIO_Port, BT_Key_Pin, GPIO_PIN_SET);
+
     /*** Prepare FreeRTOS tasks ***********************************************/
 
     // Most tasks are implemented as singletons with lazy-evaluation, i.e.
     // the object is constructed on first call to get(), so we need to
     // create these tasks here, before starting the scheduler.
 
-    configASSERT(xTaskCreate(dummy_task, "dummy",
-                configMINIMAL_STACK_SIZE, nullptr, 2, nullptr));
+    bool task_created = xTaskCreate(dummy_task, "dummy",
+            configMINIMAL_STACK_SIZE, nullptr, 2, nullptr) == pdPASS;
+    configASSERT(task_created);
 
     /*** Print debug memory debug information *********************************/
 
