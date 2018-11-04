@@ -12,12 +12,35 @@ void dummy_task(void *) {
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(1000));
 
-        volatile size_t heap_size_remaining = xPortGetFreeHeapSize();
-        logging::Buffer buf = logging::Buffer::dynamic(60);
-        snprintf(reinterpret_cast<char *>(buf.data), buf.size,
-                "Remaining heap size = %u KB (%u B)\n",
-                heap_size_remaining / (1<<10), heap_size_remaining);
-        logging::log(buf);
+        size_t heap_size_remaining = xPortGetFreeHeapSize();
+        logging::printf(60, "Remaining heap size = %u KB (%u B)\n",
+                heap_size_remaining / (1 << 10), heap_size_remaining);
+
+        logging::printf_blocking(100, "Blocking printf...\n");
+
+        {
+#if 0
+            logging::Msg msg;
+            msg = logging::Msg::dynamic(60);
+            snprintf(msg.as_chars(), msg.size, "Hello world!");
+            logging::log(msg);
+            msg = logging::Msg::dynamic(60);
+            snprintf(msg.as_chars(), msg.size, "Hello world %d!", 10);
+            logging::log(msg);
+            msg = logging::Msg::dynamic(60);
+            snprintf(msg.as_chars(), msg.size, "Hello world %d %d!", 10, 10);
+            logging::log(msg);
+            msg = logging::Msg::dynamic(60);
+            snprintf(msg.as_chars(), msg.size, "Hello world %d %d %d!", 10, 10, 10);
+            logging::log(msg);
+#else
+            logging::printf(100, "Hello world!\n");
+            logging::printf(100, "Hello world %d!\n", 10);
+            logging::printf(100, "Hello world %d %d!\n", 10, 10);
+            logging::printf(100, "Hello world %d %d %d!\n", 10, 10, 10);
+#endif
+        }
+
     }
 }
 
@@ -44,7 +67,7 @@ void run() {
     // create these tasks here, before starting the scheduler.
 
     bool task_created = xTaskCreate(dummy_task, "dummy",
-            configMINIMAL_STACK_SIZE, nullptr, 2, nullptr) == pdPASS;
+            2 * configMINIMAL_STACK_SIZE, nullptr, 2, nullptr) == pdPASS;
     configASSERT(task_created);
 
     /*** Print debug memory debug information *********************************/
@@ -64,6 +87,7 @@ void run() {
     // IMPORTANT NOTE! this resets stack pointer, so all variables declared in this scope
     // will be overwritten - if needed, declare them globally or allocacte dynamically
     // TODO: HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+    logging::printf_blocking(100, "Starting scheduler...\n");
     vTaskStartScheduler();
 
     // execution should never reach here, if it did, then something went wrong

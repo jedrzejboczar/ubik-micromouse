@@ -6,10 +6,9 @@
 #include <thread>
 #include <chrono>
 
-bool logging::log(logging::Buffer buf) {
-    int result = std::printf("%s", reinterpret_cast<char *>(buf.data)) >= 0;
-    if (buf.is_owner)
-        delete[] buf.data;
+bool logging::log(logging::Msg msg) {
+    int result = std::printf("%s", reinterpret_cast<char *>(msg.data)) >= 0;
+    msg.delete_if_owned();
     return result >= 0;
 }
 
@@ -20,46 +19,55 @@ bool logging::log(logging::Buffer buf) {
  */
 int main() {
     int x = 2;
-    {   // Create dynamic buffer that should be deleted by the logger.
+    {   // Create dynamic message that should be deleted by the logger.
         const size_t size = 100;
-        uint8_t *buf = new uint8_t[size];
-        snprintf(reinterpret_cast<char*>(buf), size, "My log message, x=%d\n", x);
-        logging::log(logging::Buffer{.data=buf, .size=size, .is_owner=true});
-        // do NOT use buf now, ownership has been passed to log()!
+        uint8_t *msg = new uint8_t[size];
+        snprintf(reinterpret_cast<char*>(msg), size, "My log message, x=%d\n", x);
+        logging::log(logging::Msg{msg, size, true});
+        // do NOT use msg now, ownership has been passed to log()!
     }
-    {   // Create dynamic buffer that should be deleted by the logger.
+
+    {   // Create dynamic message that should be deleted by the logger.
         // THIS IS THE PREFFERED WAY
         const size_t size = 100;
-        logging::Buffer buf = logging::Buffer::dynamic(size);
-        snprintf(reinterpret_cast<char*>(buf.data), buf.size, "My log message, x=%d\n", x);
-        logging::log(buf);
-        // do NOT use buf now, ownership has been passed to log()!
+        logging::Msg msg = logging::Msg::dynamic(size);
+        snprintf(msg.as_chars(), msg.size, "My log message, x=%d\n", x);
+        logging::log(msg);
+        // do NOT use msg now, ownership has been passed to log()!
     }
-    {   // Create dynamic buffer that should NOT be deleted by the logger.
+    {   // Create dynamic message that should NOT be deleted by the logger.
         // DANGEROUS!
         // this is impractical and rather theoretical, as we may not have
-        // any no way to tell if logger has ended, but we must delete the buffer later
+        // any no way to tell if logger has ended, but we must delete the message later
         const size_t size = 100;
-        logging::Buffer buf = logging::Buffer::dynamic(size, false);
-        snprintf(reinterpret_cast<char*>(buf.data), buf.size, "My log message, x=%d\n", x);
-        logging::log(buf);
+        logging::Msg msg = logging::Msg::dynamic(size, false);
+        snprintf(msg.as_chars(), msg.size, "My log message, x=%d\n", x);
+        logging::log(msg);
         // do NOT use it now as it may be still used bu the logger!
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
         // we must somehow delete it
-        delete [] buf.data;
+        msg.delete_if_owned();
     }
-    {   // Create a buffer from static array
+    {   // Create a message from static array
+        // DANGEROUS!
+        // beware! it is unsafe if the call to log() does not block!
+        uint8_t msg[100];
+        snprintf(reinterpret_cast<char*>(msg), sizeof(msg), "My log message, x=%d\n", x);
+        logging::log(logging::Msg{msg, sizeof(msg), false});
+    }
+    {   // Create a message from static array
+        // DANGEROUS!
+        // beware! it is unsafe if the call to log() does not block!
+        uint8_t msg[100];
+        snprintf(reinterpret_cast<char*>(msg), sizeof(msg), "My log message, x=%d\n", x);
+        logging::log(logging::Msg::from_static(msg));
+    }
+    {   // Create a message from static array
         // DANGEROUS!
         // beware! it is unsafe if the call to log() does not block!
         uint8_t buf[100];
-        snprintf(reinterpret_cast<char*>(buf), sizeof(buf), "My log message, x=%d\n", x);
-        logging::log(logging::Buffer{.data=buf, .size=sizeof(buf), .is_owner=false});
-    }
-    {   // Create a buffer from static array
-        // DANGEROUS!
-        // beware! it is unsafe if the call to log() does not block!
-        uint8_t buf[100];
-        snprintf(reinterpret_cast<char*>(buf), sizeof(buf), "My log message, x=%d\n", x);
-        logging::log(logging::Buffer::from_static(buf));
+        logging::Msg msg = logging::Msg::from_static(buf);
+        snprintf(msg.as_chars(), sizeof(msg), "My log message, x=%d\n", x);
+        logging::log(msg);
     }
 }

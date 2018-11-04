@@ -56,7 +56,7 @@ void initialise() {
     // ignore subsequent calls
     if (log_queue != nullptr)
         return;
-    log_queue = xQueueCreate(queue_length, sizeof(Buffer));
+    log_queue = xQueueCreate(queue_length, sizeof(Msg));
     configASSERT(log_queue != nullptr);
     bool task_created = xTaskCreate(logger_task, "Logging",
             task_stack_size, nullptr,
@@ -64,27 +64,29 @@ void initialise() {
     configASSERT(task_created);
 }
 
-bool log(Buffer buf) {
+bool log(Msg msg) {
     // lazy initialization of the module
     if (log_queue == nullptr)
         initialise();
-    bool result = xQueueSend(log_queue, &buf, 0) == pdPASS;
+    bool result = xQueueSend(log_queue, &msg, 0) == pdPASS;
     // if the call didn't succeed, we have to free memory here
-    if (!result && buf.is_owner)
-        delete [] buf.data;
+    if (!result)
+        msg.delete_if_owned();
     if (!result) logs_lost++;
     return result;
 }
 
-bool log_from_isr(Buffer buf, bool &should_yield) {
+bool log_from_isr(Msg msg, bool &should_yield) {
     // ignore call when not yet initialsed
     if (log_queue == nullptr) {
         logs_lost_from_isr++;
         return false;
     }
-    bool result = xQueueSendFromISR(log_queue, &buf,
+    bool result = xQueueSendFromISR(log_queue, &msg,
             // will set should_yield if needed, else not change
             reinterpret_cast<BaseType_t*>(&should_yield)) == pdPASS;
+    if (!result)
+        msg.delete_if_owned();
     if (!result) {
         logs_lost++;
         logs_lost_from_isr++;
@@ -92,27 +94,26 @@ bool log_from_isr(Buffer buf, bool &should_yield) {
     return result;
 }
 
-bool log_blocking(Buffer buf) {
-    size_t string_size = strlen(reinterpret_cast<char *>(buf.data));
+bool log_blocking(Msg msg) {
+    size_t string_size = strlen(reinterpret_cast<char *>(msg.data));
     uint32_t timeout = millis_per_size(log_uart.Init.BaudRate, string_size);
-    bool result = HAL_UART_Transmit(&log_uart, buf.data, buf.size, timeout) == HAL_OK;
-    if (buf.is_owner)
-        delete [] buf.data;
+    bool result = HAL_UART_Transmit(&log_uart, msg.data, msg.size, timeout) == HAL_OK;
+    msg.delete_if_owned();
     return result;
 }
 
 /******************************************************************************/
 
 void logger_task(void *) {
-    Buffer buf;
+    Msg msg;
 
     while (1) {
-        if (xQueueReceive(log_queue, &buf, portMAX_DELAY) != pdPASS)
+        if (xQueueReceive(log_queue, &msg, portMAX_DELAY) != pdPASS)
             continue;
 
-        size_t string_size = strlen(reinterpret_cast<char *>(buf.data));
+        size_t string_size = strlen(reinterpret_cast<char *>(msg.data));
 
-        if (HAL_UART_Transmit_DMA(&log_uart, buf.data, string_size) != HAL_OK) {
+        if (HAL_UART_Transmit_DMA(&log_uart, msg.data, string_size) != HAL_OK) {
             logs_lost_from_uart_errors++;
             // of cource it could have happend that we got HAL_BUSY, but
             // it would mean that our internal waiting for transmision complete
@@ -129,8 +130,7 @@ void logger_task(void *) {
         }
 
         // delete memory if required
-        if (buf.is_owner)
-            delete [] buf.data;
+        msg.delete_if_owned();
     }
 }
 

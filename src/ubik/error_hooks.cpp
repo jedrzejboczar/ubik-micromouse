@@ -22,9 +22,10 @@ void vApplicationStackOverflowHook( TaskHandle_t xTask, signed char *pcTaskName 
     taskDISABLE_INTERRUPTS();
 
     uint8_t buf[250];
-    snprintf(reinterpret_cast<char *>(buf), sizeof(buf),
+    auto msg = logging::Msg::from_static(buf);
+    snprintf(msg.as_chars(), msg.size,
             "[# ERROR #] FreeRTOS stack overflow, task = %s\n", pcTaskName);
-    logging::log_blocking(logging::Buffer::from_static(buf));
+    logging::log_blocking(msg);
 
     while (1) {
         blinkErrorLED(2, 200);
@@ -36,9 +37,10 @@ void vApplicationMallocFailedHook( void ) {
     taskDISABLE_INTERRUPTS();
 
     uint8_t buf[250];
-    snprintf(reinterpret_cast<char *>(buf), sizeof(buf),
+    auto msg = logging::Msg::from_static(buf);
+    snprintf(msg.as_chars(), msg.size,
             "[# ERROR #] FreeRTOS malloc failed\n");
-    logging::log_blocking(logging::Buffer::from_static(buf));
+    logging::log_blocking(msg);
 
     while (1) {
         blinkErrorLED(5, 200);
@@ -50,9 +52,10 @@ void vApplicationConfigAssertFailedHook(const char *file, int line) {
     taskDISABLE_INTERRUPTS();
 
     uint8_t buf[250];
-    snprintf(reinterpret_cast<char *>(buf), sizeof(buf),
+    auto msg = logging::Msg::from_static(buf);
+    snprintf(msg.as_chars(), msg.size,
             "[# ERROR #] asserion failed at %s:%d\n", file, line);
-    logging::log_blocking(logging::Buffer::from_static(buf));
+    logging::log_blocking(msg);
 
     while (1) {
         blinkErrorLED(1, 200);
