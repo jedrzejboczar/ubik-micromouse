@@ -35,7 +35,7 @@ const char * const stats_fmt =
 "=== MEMORY:\n"
 "free heap: %d\n"
 "minimum free heap: %d\n"
-// "free stack from here: %lu\n"
+"free stack from here: %lu\n"
 "=== STATE:\n"
 " Name * State * Priority * Stack * Num\n"
 "%s"
@@ -52,8 +52,7 @@ void print_system_statistics() {
     // Stack grows downwards, so free stack is the difference between SP and RAM base
     // as it's FreeRTOS we have to look at PSP, but overall we should just take the lowset.
     uint32_t stack_pointer = __get_PSP() < __get_MSP() ? __get_PSP() : __get_MSP();
-    uint32_t free_stack = stack_pointer - /*HMCRAMC0_ADDR*/ 0;
-
+    uint32_t free_stack = stack_pointer - SRAM_BASE;
 
     auto runtime_str = logging::Msg::dynamic(40 * 6);
     auto state_str   = logging::Msg::dynamic(40 * 6);
@@ -77,11 +76,11 @@ void print_system_statistics() {
     snprintf(stats.as_chars(), stats.size, stats_fmt,
             xPortGetFreeHeapSize(),
             xPortGetMinimumEverFreeHeapSize(),
-            // free_stack,
+            free_stack,
             state_str.as_chars(),
             runtime_str.as_chars()
             );
-    logging::log_blocking(stats);
+    logging::log(stats);
     runtime_str.delete_if_owned();
     state_str.delete_if_owned();
 
@@ -115,9 +114,10 @@ void print_system_statistics() {
     // vTaskList(msg.as_chars());
     // logging::log_blocking(msg);
     //
-    logging::printf_blocking(50, "===========================================\n");
+    logging::printf(50, "===========================================\n");
 }
 
+#include "timing.h"
 
 void stats_task(void *) {
     auto last_start = xTaskGetTickCount();
