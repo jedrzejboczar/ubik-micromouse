@@ -30,19 +30,20 @@ extern "C" uint32_t get_runtime_counter_value(void) {
     return time_10us;
 }
 
-const char * const stats_fmt =
-"================ STATS ====================\n"
-"=== MEMORY:\n"
-"free heap: %d\n"
-"minimum free heap: %d\n"
-"free stack from here: %lu\n"
-"=== STATE:\n"
-" Name * State * Priority * Stack * Num\n"
-"%s"
-"=== RUNTIME:\n"
-"%s"
-"===========================================\n"
-;
+const char * const stats_fmt1 = "\
+================ STATS ====================\n\
+            === MEMORY ===\n\
+free heap: %d\n\
+minimum free heap: %d\n\
+free stack from here: %lu\n\
+            === STATE ===\n\
+Name           \tState\tPrio\tStack\tNr\n";
+
+const char stats_fmt2[] = "\
+           === RUNTIME ===\n\
+Name           \tTime\t\tPercent\n";
+const char stats_fmt3[] =
+"===========================================\n" ;
 
 void print_system_statistics() {
 
@@ -54,67 +55,37 @@ void print_system_statistics() {
     uint32_t stack_pointer = __get_PSP() < __get_MSP() ? __get_PSP() : __get_MSP();
     uint32_t free_stack = stack_pointer - SRAM_BASE;
 
-    auto runtime_str = logging::Msg::dynamic(40 * 6);
-    auto state_str   = logging::Msg::dynamic(40 * 6);
-    vTaskGetRunTimeStats(runtime_str.as_chars());
-    vTaskList(state_str.as_chars());
+    logging::lock();
+    {
+        // first part
+        auto msg = logging::Msg::dynamic(strlen(stats_fmt1) + 3*10);
+        snprintf(msg.as_chars(), msg.size, stats_fmt1,
+                xPortGetFreeHeapSize(),
+                xPortGetMinimumEverFreeHeapSize(),
+                free_stack);
+        logging::log_blocking(msg);
 
-    // std::replace(runtime_str.data, runtime_str.data + strlen(runtime_str.as_chars()),
-    //         '%', '&');
-    std::replace(runtime_str.data, runtime_str.data + strlen(runtime_str.as_chars()),
-            '\r', ' ');
-    // for (size_t i = 0; i < strlen(runtime_str.as_chars()); i++) {
-    //     if (runtime_str.data[i] == '%')
-    //         runtime_str.data[i];
-    // }
+        // state
+        msg = logging::Msg::dynamic(4 * 60);
+        vTaskList(msg.as_chars());
+        std::replace(msg.data, msg.data + strlen(msg.as_chars()),
+                '\r', ' ');
+        logging::log_blocking(msg);
 
+        // runtime header
+        logging::log_blocking(logging::Msg::from_static(stats_fmt2));
 
-    auto stats = logging::Msg::dynamic(
-            sizeof(stats_fmt) + 3 * 10 +
-            strlen(runtime_str.as_chars()) + strlen(state_str.as_chars())
-            );
-    snprintf(stats.as_chars(), stats.size, stats_fmt,
-            xPortGetFreeHeapSize(),
-            xPortGetMinimumEverFreeHeapSize(),
-            free_stack,
-            state_str.as_chars(),
-            runtime_str.as_chars()
-            );
-    logging::log(stats);
-    runtime_str.delete_if_owned();
-    state_str.delete_if_owned();
+        // runtime stats
+        msg = logging::Msg::dynamic(4 * 60);
+        vTaskGetRunTimeStats(msg.as_chars());
+        std::replace(msg.data, msg.data + strlen(msg.as_chars()),
+                '\r', ' ');
+        logging::log_blocking(msg);
 
-
-
-    // auto msg = logging::Msg::dynamic(140 + 3 * 8);
-    // snprintf(msg.as_chars(), msg.size,
-    //         "================ STATS ====================\n"
-    //         "=== MEMORY:\n"
-    //         "free heap: %d\n"
-    //         "minimum free heap: %d\n"
-    //         // "free stack from here: %lu\n"
-    //         "=== RUNTIME:\n",
-    //         xPortGetFreeHeapSize(),
-    //         xPortGetMinimumEverFreeHeapSize()
-    //         // free_stack
-    //         );
-    // logging::log_blocking(msg);
-    //
-    // // runtime
-    // msg = logging::Msg::dynamic(6 * 40);
-    // vTaskGetRunTimeStats(msg.as_chars());
-    // logging::log_blocking(msg);
-    //
-    // // states: 'B'locked, 'R'eady, 'D'eleted, 'S'uspended
-    // // state | priority | stack (min. free) | num
-    // logging::printf_blocking(20, "=== STATE:\n");
-    // // logging::printf_blocking(60, " e[X]ecuting [B]locked [R]eady [S]uspended [D]eleted\n");
-    // logging::printf_blocking(60, " Name * State * Priority * Stack * Num\n");
-    // msg = logging::Msg::dynamic(6 * 40);
-    // vTaskList(msg.as_chars());
-    // logging::log_blocking(msg);
-    //
-    logging::printf(50, "===========================================\n");
+        // end line
+        logging::log_blocking(logging::Msg::from_static(stats_fmt3));
+    }
+    logging::unlock();
 }
 
 #include "timing.h"
@@ -123,10 +94,8 @@ void stats_task(void *) {
     auto last_start = xTaskGetTickCount();
 
     while(1) {
-        logging::printf_blocking(3, "\n");
         print_system_statistics();
-        logging::printf_blocking(3, "\n");
-        vTaskDelayUntil(&last_start, pdMS_TO_TICKS(1000));
+        vTaskDelayUntil(&last_start, pdMS_TO_TICKS(3000));
     }
 }
 
@@ -135,7 +104,7 @@ void dummy_task(void *number_param) {
     uintptr_t number = reinterpret_cast<uintptr_t>(number_param);
 
     while (1) {
-        vTaskDelay(pdMS_TO_TICKS(300));
+        vTaskDelay(pdMS_TO_TICKS(100));
 
         logging::printf(100, "This is dummy task %d, counter = %d\n", number, counter++);
     }
@@ -152,10 +121,10 @@ void run() {
     // create these tasks here, before starting the scheduler.
 
     bool all_created = true;
-    // all_created &= xTaskCreate(dummy_task, "Dummy 1",
-    //         configMINIMAL_STACK_SIZE + 64, (void *) 1, 2, nullptr) == pdPASS;
-    // all_created &= xTaskCreate(dummy_task, "Dummy 2",
-    //         configMINIMAL_STACK_SIZE + 64, (void *) 2, 2, nullptr) == pdPASS;
+    all_created &= xTaskCreate(dummy_task, "Dummy 1",
+            configMINIMAL_STACK_SIZE + 64, (void *) 1, 2, nullptr) == pdPASS;
+    all_created &= xTaskCreate(dummy_task, "Dummy 2",
+            configMINIMAL_STACK_SIZE + 64, (void *) 2, 2, nullptr) == pdPASS;
     all_created &= xTaskCreate(stats_task, "Stats",
             configMINIMAL_STACK_SIZE *  2, nullptr, 1, nullptr) == pdPASS;
     configASSERT(all_created);

@@ -12,25 +12,41 @@ struct Msg: Buffer {
     using Buffer::Buffer;
     Msg(Buffer buf): Buffer(buf) {}
 
-    // reimplement static methods to return Msg
-    template<size_t size>
-    static Msg from_static(uint8_t (&buf)[size]) {
-        return Buffer::from_static(buf);
+    // access the buffer as a string
+    char *as_chars() {
+        return reinterpret_cast<char *>(data);
     }
+
+    // reimplement static methods to return Msg
     static Msg dynamic(size_t size, bool is_owner=true) {
         return Buffer::dynamic(size, is_owner);
     }
 
-    char *as_chars() {
-        return reinterpret_cast<char *>(data);
+    // how to do these prettier?
+    template<size_t size>
+    static Msg from_static(uint8_t (&buf)[size]) {
+        return Buffer::from_static(buf);
+    }
+    template<size_t size>
+    static Msg from_static(const uint8_t (&buf)[size]) {
+        return Buffer::from_static(const_cast<uint8_t (&)[size]>(buf));
+    }
+    template<size_t size>
+    static Msg from_static(char (&buf)[size]) {
+        return Buffer::from_static(reinterpret_cast<uint8_t (&)[size]>(buf));
+    }
+    template<size_t size>
+    static Msg from_static(const char (&buf)[size]) {
+        return Buffer::from_static(reinterpret_cast<uint8_t (&)[size]>(const_cast<char (&)[size]>(buf)));
     }
 };
 
 /*
  * These functions allow to stop the logger task from processing
  * messages from queue.
- * IMPORTANT: You cannot use log_blocking() while holding the lock,
- * as it also aquires the same lock!
+ * IMPORTANT: You should use log_blocking() while holding the lock,
+ * as by using the queue, it may happen that it is full and the
+ * messages will be lost.
  * Also the scheduler state (running/suspended) at the moment of
  * locking must be the same as when unlocking.
  */
@@ -49,9 +65,10 @@ bool log(Msg msg, bool wait=false);
 
 /* Send logging message from the buffer. Syncronious.
  *
- * It is to be used when RTOS is not running. The call blocks until
- * the data is sent. It is the best to use static Msg with
- * this function (Msg::from_static()).
+ * It is to be used when RTOS is not running.
+ * (!) If the scheduler is running than you MUST first lock().
+ * The call blocks until the data is sent. It may be the best to
+ * use static Msg with this function (Msg::from_static()).
  */
 bool log_blocking(Msg msg);
 

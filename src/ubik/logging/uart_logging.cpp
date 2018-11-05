@@ -38,7 +38,7 @@ static UART_HandleTypeDef &log_uart = huart1;
  */
 constexpr size_t task_priority = 1;
 constexpr size_t task_stack_size = configMINIMAL_STACK_SIZE;
-constexpr size_t queue_length = 5;
+constexpr size_t queue_length = 3;
 QueueHandle_t log_queue = nullptr;
 TaskHandle_t log_task = nullptr;
 SemaphoreHandle_t log_guard = nullptr;
@@ -126,14 +126,12 @@ bool log_from_isr(Msg msg, bool &should_yield) {
 bool log_blocking(Msg msg) {
     bool result = false;
 
-    if (log_guard == nullptr)
+    // lazy initialization of the module
+    if (log_queue == nullptr)
         initialise();
-
-    lock();
 
     // send only string part of the buffer
     size_t string_size = strnlen(msg.as_chars(), msg.size - 1);
-    msg.data[msg.size - 1] = '\0';
     uint32_t timeout = millis_per_size(log_uart.Init.BaudRate, string_size);
 
     // measure transmission time
@@ -147,9 +145,6 @@ bool log_blocking(Msg msg) {
     if (result) {
         last_uart_transmission_time_us = cycles_counter::get_us();
     }
-
-    // release guard if needed
-    unlock();
 
     msg.delete_if_owned();
 
@@ -173,7 +168,6 @@ void logger_task(void *) {
 
         // send only string part of the buffer
         size_t string_size = strnlen(msg.as_chars(), msg.size - 1);
-        msg.data[msg.size - 1] = '\0';
 
         // lock UART
         lock();
