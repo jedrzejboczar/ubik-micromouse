@@ -53,7 +53,7 @@ if(CUBE_AS_STATIC_LIB)
 endif()
 
 set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY C_STANDARD 11)
-set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY CXX_STANDARD 14)
+set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 
 # custom function to add project compilation flags for main target
 # it is nice when we build cube as static library, because we won't add any warnings there
@@ -93,6 +93,7 @@ append_target_flags(${CMAKE_PROJECT_NAME}
     -fno-exceptions        # disable exceptions - only pumps-up binary
     -fno-rtti              # no runtime-type-info - only pumps-up binary
     # -Wold-style-cast       # C casting in C++ (voilated when using HAL macros)
+    -Wno-register          # disable CMSIS warinings for C++17
 
     LINKER_FLAGS
     # add generation of memory map and print percentage memory usage
