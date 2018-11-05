@@ -26,15 +26,26 @@ struct Msg: Buffer {
     }
 };
 
+/*
+ * These functions allow to stop the logger task from processing
+ * messages from queue.
+ * IMPORTANT: You cannot use log_blocking() while holding the lock,
+ * as it also aquires the same lock!
+ * Also the scheduler state (running/suspended) at the moment of
+ * locking must be the same as when unlocking.
+ */
+void lock();
+void unlock();
+
 /* Send logging message from the buffer. Asynchronious.
  *
  * (!) This will lazily initialise logging backend when first called.
  * By default does not wait for place in the queue if it is full,
- * but returns false. If block=true, will wait forever.
+ * but returns false. If wait=true, will wait forever.
  * Anyway, the buffer is taken by this function, so when
  * is_owner=true, the buffer will be deleted!
  */
-bool log(Msg msg, bool block=false);
+bool log(Msg msg, bool wait=false);
 
 /* Send logging message from the buffer. Syncronious.
  *

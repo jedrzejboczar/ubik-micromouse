@@ -38,7 +38,7 @@ static UART_HandleTypeDef &log_uart = huart1;
  */
 constexpr size_t task_priority = 1;
 constexpr size_t task_stack_size = configMINIMAL_STACK_SIZE;
-constexpr size_t queue_length = 3;
+constexpr size_t queue_length = 5;
 QueueHandle_t log_queue = nullptr;
 TaskHandle_t log_task = nullptr;
 SemaphoreHandle_t log_guard = nullptr;
@@ -74,11 +74,28 @@ void initialise() {
     configASSERT(task_created);
 }
 
-bool log(Msg msg, bool block) {
+
+void lock() {
+    if (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING) {
+        // this should always succeed as we wait indefinitelly
+        bool taken = xSemaphoreTake(log_guard, portMAX_DELAY) == pdPASS;
+        configASSERT(taken);
+    }
+}
+
+void unlock() {
+    if (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING) {
+        // this could only fail if we didn't take the semaphore earlier
+        bool could_give = xSemaphoreGive(log_guard) == pdPASS;
+        configASSERT(could_give);
+    }
+}
+
+bool log(Msg msg, bool wait) {
     // lazy initialization of the module
     if (log_queue == nullptr)
         initialise();
-    BaseType_t timeout = block ? portMAX_DELAY : 0;
+    BaseType_t timeout = wait ? portMAX_DELAY : 0;
     bool result = xQueueSend(log_queue, &msg, timeout) == pdPASS;
     // if the call didn't succeed, we have to free memory here
     if (!result)
@@ -112,40 +129,29 @@ bool log_blocking(Msg msg) {
     if (log_guard == nullptr)
         initialise();
 
-    // to allow blocking writes (mainly for debugging)
-    // we have to take the guard so that the task won't write anything
-    bool must_take_guard = xTaskGetSchedulerState() == taskSCHEDULER_RUNNING;
-    bool guard_taken = false;
-    if (must_take_guard) {
-        if (xSemaphoreTake(log_guard, portMAX_DELAY) == pdPASS)
-            guard_taken = true;
-    }
+    lock();
 
-    if (guard_taken || !must_take_guard) {
-        size_t string_size = strlen(msg.as_chars());
-        uint32_t timeout = millis_per_size(log_uart.Init.BaudRate, string_size);
+    // send only string part of the buffer
+    size_t string_size = strnlen(msg.as_chars(), msg.size - 1);
+    msg.data[msg.size - 1] = '\0';
+    uint32_t timeout = millis_per_size(log_uart.Init.BaudRate, string_size);
 
-        // measure transmission time
-        cycles_counter::reset();
-        cycles_counter::start();
+    // measure transmission time
+    cycles_counter::reset();
+    cycles_counter::start();
 
-        result = HAL_UART_Transmit(&log_uart, msg.data, string_size, timeout) == HAL_OK;
+    result = HAL_UART_Transmit(&log_uart, msg.data, string_size, timeout) == HAL_OK;
 
-        // save time on success
-        cycles_counter::stop();
-        if (result) {
-            last_uart_transmission_time_us = cycles_counter::get_us();
-        }
-
-        msg.delete_if_owned();
+    // save time on success
+    cycles_counter::stop();
+    if (result) {
+        last_uart_transmission_time_us = cycles_counter::get_us();
     }
 
     // release guard if needed
-    if (guard_taken) {
-        // this could only fail if we didn't take the semaphore earlier
-        bool could_give = xSemaphoreGive(log_guard) == pdPASS;
-        configASSERT(could_give);
-    }
+    unlock();
+
+    msg.delete_if_owned();
 
     // stats
     if (!result) {
@@ -165,44 +171,43 @@ void logger_task(void *) {
         if (xQueueReceive(log_queue, &msg, portMAX_DELAY) != pdPASS)
             continue;
 
-        bool guard_taken = xSemaphoreTake(log_guard, portMAX_DELAY) == pdPASS;
+        // send only string part of the buffer
+        size_t string_size = strnlen(msg.as_chars(), msg.size - 1);
+        msg.data[msg.size - 1] = '\0';
 
-        if (guard_taken) {
-            size_t string_size = strlen(msg.as_chars());
+        // lock UART
+        lock();
 
-            // measure transmision time
-            cycles_counter::reset();
-            cycles_counter::start();
+        // measure transmision time
+        cycles_counter::reset();
+        cycles_counter::start();
 
-            // start write operation using DMA
-            if (HAL_UART_Transmit_DMA(&log_uart, msg.data, string_size) != HAL_OK) {
-                logs_lost_from_uart_errors++;
-                // of cource it could have happend that we got HAL_BUSY, but
-                // it would mean that our internal waiting for transmision complete
-                // interrupt has failed so we'd rather clean up and continue
+        // start write operation using DMA
+        if (HAL_UART_Transmit_DMA(&log_uart, msg.data, string_size) != HAL_OK) {
+            logs_lost_from_uart_errors++;
+            // of cource it could have happend that we got HAL_BUSY, but
+            // it would mean that our internal waiting for transmision complete
+            // interrupt has failed so we'd rather clean up and continue
+            HAL_UART_Abort(&log_uart);
+        } else {
+            // for simplicity assume that huart.Init is consistent with register values
+            size_t ticks_to_wait = pdMS_TO_TICKS(millis_per_size(log_uart.Init.BaudRate, string_size));
+
+            if (ulTaskNotifyTake(pdTRUE, ticks_to_wait) == 0) {
+                logs_lost_from_notification_timeouts++;
                 HAL_UART_Abort(&log_uart);
             } else {
-                // for simplicity assume that huart.Init is consistent with register values
-                size_t ticks_to_wait = pdMS_TO_TICKS(millis_per_size(log_uart.Init.BaudRate, string_size));
-
-                if (ulTaskNotifyTake(pdTRUE, ticks_to_wait) == 0) {
-                    logs_lost_from_notification_timeouts++;
-                    HAL_UART_Abort(&log_uart);
-                } else {
-                    // success, got notification from UART interrupt
-                    cycles_counter::stop();
-                    last_uart_transmission_time_us = cycles_counter::get_us();
-                }
+                // success, got notification from UART interrupt
+                cycles_counter::stop();
+                last_uart_transmission_time_us = cycles_counter::get_us();
             }
-
         }
+
+        // stop using UART
+        unlock();
 
         // delete memory if required
         msg.delete_if_owned();
-
-        // this could only fail if we didn't take the semaphore earlier
-        bool guard_given = xSemaphoreGive(log_guard) == pdPASS;
-        configASSERT(guard_given);
     }
 }
 
