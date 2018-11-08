@@ -12,6 +12,14 @@ project(ubik VERSION 0.0.1)
 include(cmake/openocd.cmake)
 include(cmake/compilation_flags.cmake)
 
+# Remove link time optimizations
+# -flto flag makes gcc to override our interrupt handler
+# https://github.com/ObKo/stm32-cmake/issues/78
+# to check: cat compile_commands.json | egrep '\-O.|-flto' -o | sort | uniq
+string(REPLACE "-flto" " " CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+string(REPLACE "-flto" " " CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+string(REPLACE "-flto" " " CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE}")
+
 # CMake options
 set(CMAKE_COLOR_MAKEFILE ON)
 set(CMAKE_ERROR_DEPRECATED ON)
@@ -59,8 +67,8 @@ set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 # it is nice when we build cube as static library, because we won't add any warnings there
 append_target_flags(${CMAKE_PROJECT_NAME}
     COMMON_FLAGS
-    -fdiagnostics-color    # color compilation errors
     -ggdb3                 # gdb3 additional info
+    -fdiagnostics-color    # color compilation errors
     -Wpedantic             # warn when code not in defined language standard
     -Wextra
     -Wcast-function-type   # when casting to incompatible function pointer

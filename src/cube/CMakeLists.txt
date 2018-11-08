@@ -55,6 +55,8 @@ string(REPLACE ";" "\n" MYVAR "${CUBE_SOURCES}")
 
 # add sources
 target_sources(${CUBE_TARGET}
-    PRIVATE ${CUBE_SOURCES}
+    # add .s file before other sources, this MAY (but probably won't) help to prevent GCC bug:
+    # https://github.com/ObKo/stm32-cmake/issues/78
     PRIVATE ${STARTUP_FILE}
+    PRIVATE ${CUBE_SOURCES}
     )
