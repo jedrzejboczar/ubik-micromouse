@@ -9,8 +9,6 @@
 #include "queue.h"
 #include "semphr.h"
 
-#include "ubik/timing.h"
-
 
 // needed in assumptions about freertos for conversion to bool
 static_assert(pdTRUE == true, "FreeRTOS pdTRUE was assumed to be equal to 'true'");
@@ -133,18 +131,7 @@ bool log_blocking(Msg msg) {
     // send only string part of the buffer
     size_t string_size = strnlen(msg.as_chars(), msg.size - 1);
     uint32_t timeout = millis_per_size(log_uart.Init.BaudRate, string_size);
-
-    // measure transmission time
-    cycles_counter::reset();
-    cycles_counter::start();
-
     result = HAL_UART_Transmit(&log_uart, msg.data, string_size, timeout) == HAL_OK;
-
-    // save time on success
-    cycles_counter::stop();
-    if (result) {
-        last_uart_transmission_time_us = cycles_counter::get_us();
-    }
 
     msg.delete_if_owned();
 
@@ -172,10 +159,6 @@ void logger_task(void *) {
         // lock UART
         lock();
 
-        // measure transmision time
-        cycles_counter::reset();
-        cycles_counter::start();
-
         // start write operation using DMA
         if (HAL_UART_Transmit_DMA(&log_uart, msg.data, string_size) != HAL_OK) {
             logs_lost_from_uart_errors++;
@@ -192,8 +175,6 @@ void logger_task(void *) {
                 HAL_UART_Abort(&log_uart);
             } else {
                 // success, got notification from UART interrupt
-                cycles_counter::stop();
-                last_uart_transmission_time_us = cycles_counter::get_us();
             }
         }
 

@@ -64,13 +64,6 @@ void vApplicationConfigAssertFailedHook(const char *file, int line) {
     }
 }
 
-// void HardFault_Handler(void) {
-//     while (1) {
-//         blinkErrorLED(1, 1000);
-//     }
-// }
-
-
 
 // imlpementation of helper functions
 

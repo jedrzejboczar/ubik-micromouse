@@ -14,7 +14,11 @@ void stats_task(void *) {
     auto last_start = xTaskGetTickCount();
 
     while(1) {
+        cycles_counter::reset();
+        cycles_counter::start();
         logging::print_stats();
+        cycles_counter::stop();
+        logging::printf(50, "=== Printing stats took %d us ===\n", cycles_counter::get_us());
         vTaskDelayUntil(&last_start, pdMS_TO_TICKS(3000));
     }
 }
