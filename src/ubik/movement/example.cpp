@@ -8,6 +8,7 @@
 #include <vector>
 #include <fstream>
 #include <cstdlib>
+#include <cassert>
 
 float t = 0;
 std::vector<float> g_time;
@@ -24,6 +25,8 @@ void movement::Controller::delay(float dt) {
     g_acc.push_back(acc);
 
     t += dt;
+
+    assert(g_time.size() < 1000000);
 
     // std::cout << "Current values:" << std::endl
     //     << std::fixed << std::setprecision(3)
