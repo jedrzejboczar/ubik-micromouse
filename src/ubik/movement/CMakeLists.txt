@@ -4,4 +4,6 @@ target_sources(${CMAKE_PROJECT_NAME}
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/pid.h"
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/as5045.h"
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/as5045.cpp"
+    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/spi_devices.h"
+    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/spi_devices.cpp"
     )

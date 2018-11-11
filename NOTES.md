@@ -22,3 +22,10 @@ How to use them here:
     N states - 7200
     no prescaler
     this gives fpwm = fclk / (period+1) = 72e6 / 7.2e3 = 10e3 -> 10kHz
+
+# SPI (encoders + gpio-expander)
+
+SPI has no DMA available.
+- reading 3 bytes with HAL_SPI_Receive() takes about 51 us
+- reading 3 bytes with a simple implementation on registers takes about 44 us
+- reading 3 bytes with HAL_SPI_Receive_IT() takes about 51 us, but have about 18 us of time for other things
