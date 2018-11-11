@@ -2,6 +2,9 @@
 
 #include <stdint.h>
 
+// warning: ISO C++ prohibits anonymous structs [-Wpedantic]
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 
 struct AS5045Reading {
     enum FieldStatus {
@@ -37,8 +40,10 @@ struct AS5045Reading {
         return OCF == 1 && COF == 0 && LIN == 0 && is_pairty_ok();
     }
 
-private:
+    // usage is discouraged, to obtain data use AS5045Reading::from_buffer()
     AS5045Reading(): _data(0) { }
 };
+
+#pragma GCC diagnostic pop
 
 static_assert(sizeof(AS5045Reading) == 4, "This structure should take up 4 bytes");

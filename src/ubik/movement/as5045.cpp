@@ -37,16 +37,16 @@ AS5045Reading::FieldStatus AS5045Reading::field_status() {
 }
 
 bool AS5045Reading::is_pairty_ok() {
-	uint32_t is_even = _data;
+	uint32_t value = _data;
     // to check parity we perform XOR on all bits
     // these operations store the result in last bit
-    // of `is_even`, 0 for even, 1 for odd parity
-	is_even ^= is_even >> 16;
-	is_even ^= is_even >> 8;
-	is_even ^= is_even >> 4;
-	is_even ^= is_even >> 2;
-	is_even ^= is_even >> 1;
-	return is_even == 0;
+    // of `value`, 0 for even, 1 for odd parity
+	value ^= value >> 16;
+	value ^= value >> 8;
+	value ^= value >> 4;
+	value ^= value >> 2;
+	value ^= value >> 1;
+	return (value & 1) == 0;
 }
 
 
