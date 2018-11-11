@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdio>
 #include "buffer.h"
 
 namespace logging {
