@@ -48,6 +48,10 @@ int max_pulse() {
 
 
 void initialise() {
+    static bool initialised = false;
+    if (initialised) return;
+    initialised = true;
+
     HAL_StatusTypeDef result;
 	result = HAL_TIM_PWM_Start(&motors_timer, left_tim_channel);
     assert(result == HAL_OK);

@@ -4,6 +4,9 @@ namespace movement {
 namespace regulator {
 
 
+// TODO: better interface
+
+void initialise();
 void regulation_task(void *);
 
 // set the absolute value of current regulation target

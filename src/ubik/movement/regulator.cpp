@@ -7,6 +7,7 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
+#include "semphr.h"
 
 #include "pid.h"
 #include "motor_control.h"
@@ -18,27 +19,41 @@
 namespace movement {
 namespace regulator {
 
-// cumulative positions for each wheel
-// we need to keep track of these as the angle wraps to zero after max value
-// the unit is the same as for encoder readings
-// // for 12-bit resulution we can store ~53km of forward motion
 static constexpr int32_t MAX_ENCODER_READING = (1 << 12) - 1;
 static constexpr float   LOOP_FREQUENCY = 1e3;
 
 
+static void lock();
+static void unlock();
 static void update_position(int32_t &position, int32_t angle, int32_t last_angle);
 static std::pair<int32_t, int32_t>
     convert_to_encoder_ticks(float translation_meters, float rotation_radians);
 
+// SP and PV of PID regulation
+// these are cumulative positions for each wheel
+// we need to keep track of these as the angle wraps to zero after max value
+// the unit is the same as for encoder readings
+// for 12-bit resulution we can store ~53km of forward motion
 static int32_t set_point_left = 0;
 static int32_t set_point_right = 0;
+static int32_t position_left = 0;
+static int32_t position_right = 0;
+
+SemaphoreHandle_t state_mutex = nullptr;
 
 
+void initialise() {
+    static bool initialised = false;
+    if (initialised) return;
+    initialised = true;
+
+    // create mutex to guard variables access (each will be short, but
+    // must be guarded anyway)
+    state_mutex = xSemaphoreCreateMutex();
+    configASSERT(state_mutex != nullptr);
+}
 
 void regulation_task(void *) {
-    int32_t position_left = 0;
-    int32_t position_right = 0;
-
     // prepare PID regulators
     PID pid_left(LOOP_FREQUENCY), pid_right(LOOP_FREQUENCY);
     pid_left .set_params(3e-5, .1e-6/* , .1e-6 */);
@@ -75,29 +90,36 @@ void regulation_task(void *) {
             }
         }
 
-        // calculate PID output
-        float out_left = pid_left.next(set_point_left, position_left);
-        float out_right = pid_right.next(set_point_right, position_right);
+        // lock variables, do not wait!
+        bool taken = xSemaphoreTake(state_mutex, 0) == pdPASS;
 
-        // normalize output so that we won't have to change parameters max_pulse changes
-        // normalize such that PID output = 1.0 corresponds to 100% pulse
-        out_left = out_left * motors::max_pulse();
-        out_right = out_right * motors::max_pulse();
+        if (taken) {
+            // calculate PID output
+            float out_left = pid_left.next(set_point_left, position_left);
+            float out_right = pid_right.next(set_point_right, position_right);
 
-        // calculate motor directions and pulse
-        motors::set_direction(
-                out_left  > 0 ? FORWARDS : BACKWARDS,
-                out_right > 0 ? FORWARDS : BACKWARDS);
-        motors::set_pulse(std::abs(out_left), std::abs(out_right));
+            // normalize output so that we won't have to change parameters max_pulse changes
+            // normalize such that PID output = 1.0 corresponds to 100% pulse
+            out_left = out_left * motors::max_pulse();
+            out_right = out_right * motors::max_pulse();
 
-        if (counter++ % 50 == 0)
-            logging::printf(120, "%8d,%8d,%8d,%8d,%8d,%8d\n",
-                    (int) set_point_left, position_left, (int) out_left,
-                    (int) set_point_right, position_right, (int) out_right);
-            // logging::printf(120, "%ld,%ld,%ld,%ld\n",
-            //         (int) set_point_left, (int) out_left, (int) set_point_right, (int) out_right);
-            // logging::printf(120, "spl=%ld,outl=%ld,spr=%ld,outr=%ld\n",
-            //         static_cast<int>(set_point_left), out_left, static_cast<int>(set_point_right), out_right);
+            // calculate motor directions and pulse
+            motors::set_direction(
+                    out_left  > 0 ? FORWARDS : BACKWARDS,
+                    out_right > 0 ? FORWARDS : BACKWARDS);
+            motors::set_pulse(std::abs(out_left), std::abs(out_right));
+
+
+            // DEBUG
+            if (counter++ % 50 == 0)
+                logging::printf(120, "%8d,%8d,%8d,%8d,%8d,%8d\n",
+                        (int) set_point_left, position_left, (int) out_left,
+                        (int) set_point_right, position_right, (int) out_right);
+
+
+            // release the mutex
+            unlock();
+        }
 
         // TODO: use a timer instead, for a higher frequency
         vTaskDelayUntil(&last_start, pdMS_TO_TICKS(1));
@@ -109,9 +131,10 @@ void set_regulation_target(float translation_meters, float rotation_radians) {
     std::tie(ticks_left, ticks_right)
         = convert_to_encoder_ticks(translation_meters, rotation_radians);
 
-    // TODO: mutex, lock global variables!
+    lock();
     set_point_left = ticks_left;
     set_point_right = ticks_right;
+    unlock();
 }
 
 void update_regulation_target(float translation_meters, float rotation_radians) {
@@ -119,9 +142,10 @@ void update_regulation_target(float translation_meters, float rotation_radians) 
     std::tie(ticks_left, ticks_right)
         = convert_to_encoder_ticks(translation_meters, rotation_radians);
 
-    // TODO: mutex, lock global variables!
+    lock();
     set_point_left += ticks_left;
     set_point_right += ticks_right;
+    unlock();
 }
 
 
@@ -170,6 +194,17 @@ std::pair<int32_t, int32_t> convert_to_encoder_ticks(float translation_meters, f
 }
 
 
+static void lock() {
+    // this should always succeed as we wait indefinitelly
+    bool taken = xSemaphoreTake(state_mutex, portMAX_DELAY) == pdPASS;
+    configASSERT(taken);
+}
+
+static void unlock() {
+    // this could only fail if we didn't take the semaphore earlier
+    bool could_give = xSemaphoreGive(state_mutex) == pdPASS;
+    configASSERT(could_give);
+}
 
 } // namespace regulator
 } // namespace movement

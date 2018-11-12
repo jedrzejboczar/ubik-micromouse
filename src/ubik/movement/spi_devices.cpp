@@ -32,6 +32,10 @@ static void unlock();
 
 
 void initialise() {
+    static bool initialised = false;
+    if (initialised) return;
+    initialised = true;
+
     mutex = xSemaphoreCreateMutex();
     configASSERT(mutex != nullptr);
 

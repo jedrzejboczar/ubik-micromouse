@@ -89,6 +89,7 @@ void run() {
 
     spi::initialise(); // encoders & gpio expander
     movement::motors::initialise(); // motor control
+    movement::regulator::initialise(); // PID regulator
 
     /*** Prepare FreeRTOS tasks ***********************************************/
 
