@@ -41,8 +41,8 @@ void regulation_task(void *) {
 
     // prepare PID regulators
     PID pid_left(LOOP_FREQUENCY), pid_right(LOOP_FREQUENCY);
-    pid_left .set_params(.3e-5, .5e-6, .1e-6);
-    pid_right.set_params(.3e-5, .5e-6, .1e-6);
+    pid_left .set_params(3e-5, .1e-6/* , .1e-6 */);
+    pid_right.set_params(3e-5, .1e-6/* , .1e-6 */);
 
     // get initial state (wheel angles)
     spi::EncoderReadings readings = spi::read_encoders();
@@ -113,6 +113,17 @@ void set_regulation_target(float translation_meters, float rotation_radians) {
     set_point_left = ticks_left;
     set_point_right = ticks_right;
 }
+
+void update_regulation_target(float translation_meters, float rotation_radians) {
+    int32_t ticks_left, ticks_right;
+    std::tie(ticks_left, ticks_right)
+        = convert_to_encoder_ticks(translation_meters, rotation_radians);
+
+    // TODO: mutex, lock global variables!
+    set_point_left += ticks_left;
+    set_point_right += ticks_right;
+}
+
 
 void update_position(int32_t &position, int32_t angle, int32_t last_angle) {
     int32_t angle_delta = angle - last_angle;

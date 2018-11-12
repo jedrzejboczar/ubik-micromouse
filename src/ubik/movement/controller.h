@@ -1,12 +1,19 @@
+#pragma once
+
 #include <algorithm>
 
 // #include "ubik/maze/directions.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+
+#include "regulator.h"
+
 namespace movement {
 
-struct Position {
-    float x, y, theta;
-};
+// struct Position {
+//     float x, y, theta;
+// };
 
 class Controller {
     float dt;
@@ -20,7 +27,9 @@ public:
 
     // void move(Dir dir);
 
-    void delay(float dt);
+    void delay(float dt) {
+        vTaskDelay(pdMS_TO_TICKS(1e3f * dt));
+    }
 
     // move by given distance, try to achieve vel_desired with given acc, end with vel_final
     // all input values should be positive (absolute values are taken)
@@ -46,6 +55,8 @@ public:
 
             // reduce remaining distance
             dist_remaining -= vel_current * dt;
+
+            regulator::update_regulation_target(vel_current * dt, 0);
 
             // wait
             delay(dt);
