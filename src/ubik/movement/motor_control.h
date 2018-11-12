@@ -14,15 +14,15 @@ enum MotorDirection {
     FORWARDS, BACKWARDS, STOPPED
 };
 
-namespace driver {
+namespace motors {
 
 void initialise();
 void set_enabled(bool enabled);
 void set_direction(MotorDirection left, MotorDirection right);
-void set_pulse(unsigned int left, unsigned int right);
-unsigned int max_pulse();
+void set_pulse(int left, int right);
+int max_pulse();
 
-} // namespace driver
+} // namespace motors
 } // namespace movement
 
 

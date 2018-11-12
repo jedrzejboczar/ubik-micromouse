@@ -50,10 +50,25 @@ public:
         float Ti = P/I;
         float Td = D/P;
 
-        // out(t) = out(t-1) + dout/dt
-        last_out = last_out + P * ((1 + dt/Ti) * error
+        // The formula for the output is basically this:
+        //    out(t) = out(t-1) + dout/dt
+        //
+        // To see what it means we can expand (I may have made some little bugs in this expansion):
+        //    dout/dt =
+        //       P * ( e(t) + dt/Ti*e(t) - e(t-1) - Td/dt*PV(t) + 2*Td/dt*PV(t-1) - Td/dt*PV(t-2) )
+        //       P * ( e(t) + KI*e(t) - e(t-1) - KD*PV(t) + 2*KD*PV(t-1) - KD*PV(t-2) )
+        //       P * ( e(t)-e(t-1) + KI*e(t) + KD*(-PV(t) + 2*PV(t-1) - PV(t-2)) )
+        //       P * ( de(t) + KI*e(t) + KD*d2PV(t) )
+        //       P*de(t) + P*KI*e(t) + P*KD*d2PV(t)
+        // so:
+        //    dout(t) = P*de(t) + P*KI*e(t) + P*KD*d2PV(t)   /integrate both sides
+        //    out(t) = P*e(t) + P*KI*Integral(e(t)) + P*KD*dPV(t)
+        last_out = last_out
+            + P * (
+                    (1 + dt/Ti) * error
                     + (-1) * prev_e
-                    - Td/dt * (PV - 2*prev_PV + prev2_PV));
+                    - Td/dt * (PV - 2*prev_PV + prev2_PV)
+                  );
 
         prev2_PV = prev_PV;
         prev_PV = PV;

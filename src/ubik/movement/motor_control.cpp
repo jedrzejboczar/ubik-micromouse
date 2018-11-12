@@ -14,7 +14,7 @@ extern TIM_HandleTypeDef htim3;
 
 
 namespace movement {
-namespace driver {
+namespace motors {
 
 
 static TIM_HandleTypeDef &motors_timer = htim3;
@@ -41,7 +41,7 @@ static void MOT2_Dir2(bool state) {
 }
 
 
-unsigned int max_pulse() {
+int max_pulse() {
     return motors_timer.Init.Period;
 }
 
@@ -74,9 +74,9 @@ void set_enabled(bool enabled) {
 static_assert(left_tim_channel == TIM_CHANNEL_1, "Adjust set_pulse if channel changes.");
 static_assert(right_tim_channel == TIM_CHANNEL_2, "Adjust set_pulse if channel changes.");
 
-void set_pulse(unsigned int left, unsigned int right) {
-    motors_timer.Instance->CCR1 = std::min(left, max_pulse());
-    motors_timer.Instance->CCR2 = std::min(right, max_pulse());
+void set_pulse(int left, int right) {
+    motors_timer.Instance->CCR1 = std::max(0, std::min(left, max_pulse()));
+    motors_timer.Instance->CCR2 = std::max(0, std::min(right, max_pulse()));
 }
 
 void set_direction(MotorDirection left, MotorDirection right) {
@@ -117,6 +117,6 @@ void set_direction(MotorDirection left, MotorDirection right) {
 }
 
 
-} // namespace driver
+} // namespace motors
 } // namespace movement
 
