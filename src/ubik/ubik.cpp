@@ -18,19 +18,17 @@ void stats_task(void *) {
         cycles_counter::start();
         logging::print_stats();
         cycles_counter::stop();
-        logging::printf(50, "=== Printing stats took %d us ===\n", cycles_counter::get_us());
-        vTaskDelayUntil(&last_start, pdMS_TO_TICKS(5000));
+        logging::printf(70, "=== Printing stats took %d us ===\n", cycles_counter::get_us());
+        vTaskDelayUntil(&last_start, pdMS_TO_TICKS(7.5e3));
     }
 }
 
-#include "ubik/movement/pid.h"
 #include "ubik/movement/motor_control.h"
-#include "ubik/movement/as5045.h"
-#include "ubik/logging/print_bits.h"
+// #include "ubik/movement/as5045.h"
+// #include "ubik/logging/print_bits.h"
 #include "ubik/movement/spi_devices.h"
+#include "movement/regulator.h"
 
-
-// PID vel_pid;
 
 extern "C" TIM_HandleTypeDef htim4;
 spi::EncoderReadings current;
@@ -39,87 +37,51 @@ volatile int angle_right = 0;
 
 extern "C" void callback_timer_period_elapsed(TIM_HandleTypeDef *htim) {
     if (htim->Instance == htim4.Instance) {
-        // read encoders
-        spi::EncoderReadings readings = spi::read_encoders();
-        if (readings.valid && readings.left.is_ok() && readings.right.is_ok()) {
-            current = readings;
-            angle_left = readings.left.angle;
-            angle_right = readings.right.angle;
-        }
+        // // read encoders
+        // spi::EncoderReadings readings = spi::read_encoders();
+        // if (readings.valid && readings.left.is_ok() && readings.right.is_ok()) {
+        //     current = readings;
+        //     angle_left = readings.left.angle;
+        //     angle_right = readings.right.angle;
+        // }
 
         // get next PID output
         // set motors pulse
     }
 }
 
-extern "C" TIM_HandleTypeDef htim2;
-extern "C" TIM_HandleTypeDef htim3;
+void set_target_position_task(void *) {
+    vTaskDelay(1000);
 
-void angle_printing_task(void *) {
-    auto last_start = xTaskGetTickCount();
+
+    movement::motors::set_enabled(true);
+    movement::regulator::set_regulation_target(0.1, 0);
+    vTaskDelay(2000);
+    // movement::motors::set_enabled(false);
+
+    // movement::motors::set_enabled(true);
+    // int imax = 2500;
+    // for (int i = 0; i < 2500; i++) {
+    //     // logging::printf(100, "setting trans = %f\n", 0.001 * i);
+    //     // logging::printf(100, "setting trans = %d / 1000\n", 1 * i);
+    //     movement::regulator::set_regulation_target(0.10 * i / imax, 0);
+    //     vTaskDelay(2);
+    // }
+    // // movement::motors::set_enabled(false);
+
     while(1) {
-        // logging::printf(200, "L: ok=%d ang=%5d R: ok=%d ang=%5d\n",
-        //         current.left.is_ok(), current.left.angle, current.right.is_ok(), current.right.angle);
-        logging::printf(200, "L %5d R %5d\n",
-                current.left.angle, current.right.angle);
-        vTaskDelayUntil(&last_start, pdMS_TO_TICKS(2));
+        vTaskDelay(1000);
     }
 }
-
-uint16_t left_angles[2000];
-
-void mover_task(void *) {
-    auto last_start = xTaskGetTickCount();
-
-
-    spi::initialise();
-    movement::driver::initialise();
-
-    float f = 1000;
-    HAL_TIM_Base_DeInit(&htim4);
-	htim4.Init.Prescaler = 72 - 1; // 72MHz -> 1MHz
-	htim4.Init.Period = ((uint32_t) 1000000 / f) - 1;
-	if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
-		configASSERT(0);
-	HAL_TIM_Base_Start_IT(&htim4);
-
-
-
-    movement::driver::set_direction(movement::FORWARDS, movement::FORWARDS);
-    movement::driver::set_enabled(true);
-    logging::printf_blocking(50, "max_pulse = %d\n", movement::driver::max_pulse());
-    float max_ratio = .3;
-    int pulse = 0;
-
-    for (int i = 0; i < 1000; i++) {
-        pulse = i/1000.0f * max_ratio * movement::driver::max_pulse();
-        movement::driver::set_pulse(pulse, pulse);
-        if (i % 10 == 0)
-            logging::printf_blocking(50, "pulse = %d\n", pulse);
-        // vTaskDelayUntil(&last_start, pdMS_TO_TICKS(3));
-        vTaskDelay(pdMS_TO_TICKS(3));
-    }
-    for (int i = 1000; i > 0; i--) {
-        pulse = i/1000.0f * max_ratio * movement::driver::max_pulse();
-        movement::driver::set_pulse(pulse, pulse);
-        if (i % 10 == 0)
-            logging::printf_blocking(50, "pulse = %d\n", pulse);
-        vTaskDelay(pdMS_TO_TICKS(3));
-    }
-    movement::driver::set_enabled(false);
-
-
-    while (1) {
-
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-}
-
-#include "movement/regulator.h"
 
 void run() {
     logging::printf_blocking(100, "\n===========================================\n");
     logging::printf_blocking(100, "Initialising system...\n");
+
+    /*** Initialize modules ***************************************************/
+
+    spi::initialise(); // encoders & gpio expander
+    movement::motors::initialise(); // motor control
 
     /*** Prepare FreeRTOS tasks ***********************************************/
 
@@ -132,6 +94,8 @@ void run() {
     //         configMINIMAL_STACK_SIZE * 2, nullptr, 1, nullptr) == pdPASS;
     // all_created &= xTaskCreate(mover_task, "Mover",
     //         configMINIMAL_STACK_SIZE * 2, nullptr, 3, nullptr) == pdPASS;
+    all_created &= xTaskCreate(set_target_position_task, "Setter",
+            configMINIMAL_STACK_SIZE * 2, nullptr, 2, nullptr) == pdPASS;
     all_created &= xTaskCreate(movement::regulator::regulation_task, "Regulator",
             configMINIMAL_STACK_SIZE * 2, nullptr, 3, nullptr) == pdPASS;
     // all_created &= xTaskCreate(stats_task, "Stats",

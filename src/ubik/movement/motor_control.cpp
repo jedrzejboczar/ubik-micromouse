@@ -75,6 +75,10 @@ static_assert(left_tim_channel == TIM_CHANNEL_1, "Adjust set_pulse if channel ch
 static_assert(right_tim_channel == TIM_CHANNEL_2, "Adjust set_pulse if channel changes.");
 
 void set_pulse(int left, int right) {
+    // guard against regulator unstability
+    // if (left > max_pulse() || right > max_pulse())
+    //     set_enabled(false);
+
     motors_timer.Instance->CCR1 = std::max(0, std::min(left, max_pulse()));
     motors_timer.Instance->CCR2 = std::max(0, std::min(right, max_pulse()));
 }

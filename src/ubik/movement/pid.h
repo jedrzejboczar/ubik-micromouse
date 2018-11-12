@@ -31,6 +31,11 @@ public:
     // gains: proportinal, integral and derivative
     float P = 1, I = 0, D = 0;
 
+    // just for easier setting
+    void set_params(float p, float i=0, float d=0) {
+        P = p; I = i; D = d;
+    }
+
     // create PID regulator for the given regulation frequency
     PID(float freq): dt(1.0f / freq) {}
 
