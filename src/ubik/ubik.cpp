@@ -44,21 +44,27 @@ extern "C" void callback_timer_period_elapsed(TIM_HandleTypeDef *htim) {
 }
 
 void set_target_position_task(void *) {
-    vTaskDelay(1000);
+    vTaskDelay(1500);
 
-    // using constants::deg2rad;
-    // movement::Controller controller(500);
-    // movement::motors::set_enabled(true);
-    //
-    // controller.move_line(.10, 0.25, 0.3);
-    // vTaskDelay(pdMS_TO_TICKS(500));
-    // controller.move_turn(deg2rad(90), deg2rad(70), deg2rad(90));
-
-
+    using constants::deg2rad;
+    movement::Controller controller(1000);
     movement::motors::set_enabled(true);
-    for (int i = 0; i < 500; i++) {
-        movement::regulator::update_target_by(0.0001, 0);
-        vTaskDelay(1);
+
+    float vel_lin = 0.50;
+    float acc_lin = 0.40;
+    float vel_ang = deg2rad(300);
+    float acc_ang = deg2rad(400);
+
+    while (1) {
+
+        controller.move_turn(deg2rad(45), vel_ang, acc_ang);   controller.reset();
+        controller.move_turn(deg2rad(-90), vel_ang, acc_ang);  controller.reset();
+        controller.move_turn(deg2rad(45), vel_ang, acc_ang);   controller.reset();
+        controller.move_line(.20, vel_lin, acc_lin);           controller.reset();
+        controller.move_turn(deg2rad(180), vel_ang, acc_ang);  controller.reset();
+        controller.move_line(.20, vel_lin, acc_lin);           controller.reset();
+        controller.move_turn(deg2rad(-180), vel_ang, acc_ang); controller.reset();
+
     }
 
 
@@ -89,11 +95,11 @@ void run() {
     // all_created &= xTaskCreate(mover_task, "Mover",
     //         configMINIMAL_STACK_SIZE * 2, nullptr, 3, nullptr) == pdPASS;
     all_created &= xTaskCreate(set_target_position_task, "Setter",
-            configMINIMAL_STACK_SIZE * 2, nullptr, 2, nullptr) == pdPASS;
+            configMINIMAL_STACK_SIZE * 3, nullptr, 2, nullptr) == pdPASS;
     all_created &= xTaskCreate(movement::regulator::regulation_task, "Regulator",
-            configMINIMAL_STACK_SIZE * 2, nullptr, 3, nullptr) == pdPASS;
-    // all_created &= xTaskCreate(stats_task, "Stats",
-    //         configMINIMAL_STACK_SIZE * 2, nullptr, 2, nullptr) == pdPASS;
+            configMINIMAL_STACK_SIZE * 2, nullptr, 4, nullptr) == pdPASS;
+    all_created &= xTaskCreate(stats_task, "Stats",
+            configMINIMAL_STACK_SIZE * 2, nullptr, 1, nullptr) == pdPASS;
     configASSERT(all_created);
 
     /*** Print debug memory debug information *********************************/

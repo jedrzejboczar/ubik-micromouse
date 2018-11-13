@@ -9,6 +9,8 @@
 
 #include "regulator.h"
 
+#include "ubik/logging/logging.h"
+
 namespace movement {
 
 // struct Position {
@@ -22,6 +24,11 @@ class Controller {
     float vel_desired;
     float acc;
 public:
+    // TODO: remove this by using separate variables for linear/angular motion
+    void reset() {
+        dist_remaining = vel_current = vel_desired = acc = 0;
+    }
+
     Controller(float frequency):
         dt(1.0f / frequency), dist_remaining(0), vel_current(0), vel_desired(0), acc(0) {}
 
@@ -34,6 +41,8 @@ public:
     // move by given distance, try to achieve vel_desired with given acc, end with vel_final
     // all input values should be positive (absolute values are taken)
     void move_line(float distance, float vel_desired, float acc, float vel_final=0) {
+        int direction = distance > 0 ? 1 : -1;
+
         // use only absolute values, direction only affects the resulting velocities sign
         distance = std::abs(distance);
         vel_desired = std::abs(vel_desired);
@@ -51,13 +60,14 @@ public:
                 is_breaking = true;
             }
 
-            update_velocity();
-
             // reduce remaining distance
             float distance_traveled = vel_current * dt;
             dist_remaining -= distance_traveled;
 
-            regulator::update_target_by(distance_traveled, 0);
+            // update after moving to avoid deadlock
+            update_velocity();
+
+            regulator::update_target_by(direction * distance_traveled, 0);
 
             // wait
             delay(dt);
@@ -70,6 +80,8 @@ public:
 
     // all in radians, radians per sec, etc.
     void move_turn(float angle, float vel_desired, float acc, float vel_final=0) {
+        int direction = angle > 0 ? 1 : -1;
+
         // use only absolute values, direction only affects the resulting velocities sign
         angle = std::abs(angle);
         vel_desired = std::abs(vel_desired);
@@ -87,14 +99,15 @@ public:
                 is_breaking = true;
             }
 
-            update_velocity();
-
             // reduce remaining distance
             float distance_traveled = vel_current * dt;
             dist_remaining -= distance_traveled;
 
+            // update after moving to avoid deadlock
+            update_velocity();
+
             // distance_traveled is in radians
-            regulator::update_target_by(0, distance_traveled);
+            regulator::update_target_by(0, direction * distance_traveled);
 
             // wait
             delay(dt);

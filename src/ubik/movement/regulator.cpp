@@ -99,11 +99,11 @@ void regulation_task(void *) {
                     std::lround(std::abs(out_right)));
 
 
-            // DEBUG
-            if (counter++ % 50 == 0)
-                logging::printf(120, "%8d,%8d,%8d,%8d,%8d,%8d\n",
-                        (int) set_point_left, (int) position_left, (int) out_left,
-                        (int) set_point_right, (int) position_right, (int) out_right);
+            // // DEBUG
+            // if (counter++ % 10 == 0)
+            //     logging::printf(120, "%8d,%8d,%8d,%8d,%8d,%8d\n",
+            //             (int) set_point_left, (int) position_left, (int) out_left,
+            //             (int) set_point_right, (int) position_right, (int) out_right);
 
 
             // release the mutex
