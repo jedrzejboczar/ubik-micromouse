@@ -18,7 +18,7 @@ void print_stats();
  * As an argument the number of ticks specifying the delay between
  * subsequent loops should be passed. It has to be cast to void*.
  */
-void system_monitor_task(void *ticks_to_wait_as_ptr);
+void stats_monitor_task(void *ticks_to_wait_as_ptr);
 
 } // namespace logging
 

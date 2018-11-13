@@ -80,7 +80,7 @@ static const char fmt_footer[] =
 
 /*** Implementation of stats printing *****************************************/
 
-void system_monitor_task(void *ticks_to_wait_as_ptr) {
+void stats_monitor_task(void *ticks_to_wait_as_ptr) {
     if (ticks_to_wait_as_ptr == nullptr) {
         const char msg[] = "[# ERROR #] system_monitor: ticks_to_wait_as_ptr=nullptr! suspending...\n";
         logging::log(logging::Msg::from_static(msg), true);

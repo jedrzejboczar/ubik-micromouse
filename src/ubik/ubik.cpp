@@ -30,8 +30,6 @@ extern "C" void callback_timer_period_elapsed(TIM_HandleTypeDef *htim) {
 }
 
 void set_target_position_task(void *) {
-    vTaskDelay(1500);
-
     using constants::deg2rad;
     movement::Controller controller(1000);
     movement::motors::set_enabled(true);
@@ -42,15 +40,24 @@ void set_target_position_task(void *) {
     float acc_ang = deg2rad(400);
 
     while (1) {
+        logging::printf(100, "Press button to start...\n");
+        while (HAL_GPIO_ReadPin(SW_Start_GPIO_Port, SW_Start_Pin) == GPIO_PIN_RESET)
+            vTaskDelay(50);
 
-        controller.move_turn(deg2rad(45), vel_ang, acc_ang);   controller.reset();
-        controller.move_turn(deg2rad(-90), vel_ang, acc_ang);  controller.reset();
-        controller.move_turn(deg2rad(45), vel_ang, acc_ang);   controller.reset();
-        controller.move_line(.20, vel_lin, acc_lin);           controller.reset();
-        controller.move_turn(deg2rad(180), vel_ang, acc_ang);  controller.reset();
-        controller.move_line(.20, vel_lin, acc_lin);           controller.reset();
-        controller.move_turn(deg2rad(-180), vel_ang, acc_ang); controller.reset();
+        logging::printf(100, "Starting...\n");
+        vTaskDelay(500);
+        while (HAL_GPIO_ReadPin(SW_Start_GPIO_Port, SW_Start_Pin) == GPIO_PIN_RESET) {
+            controller.move_turn(deg2rad(45), vel_ang, acc_ang);   controller.reset();
+            controller.move_turn(deg2rad(-90), vel_ang, acc_ang);  controller.reset();
+            controller.move_turn(deg2rad(45), vel_ang, acc_ang);   controller.reset();
+            controller.move_line(.20, vel_lin, acc_lin);           controller.reset();
+            controller.move_turn(deg2rad(180), vel_ang, acc_ang);  controller.reset();
+            controller.move_line(.20, vel_lin, acc_lin);           controller.reset();
+            controller.move_turn(deg2rad(-180), vel_ang, acc_ang); controller.reset();
+        }
 
+        logging::printf(100, "Stopped.\n");
+        vTaskDelay(3000);
     }
 
 
@@ -80,8 +87,8 @@ void run() {
             configMINIMAL_STACK_SIZE * 3, nullptr, 2, nullptr) == pdPASS;
     all_created &= xTaskCreate(movement::regulator::regulation_task, "Regulator",
             configMINIMAL_STACK_SIZE * 2, nullptr, 4, nullptr) == pdPASS;
-    all_created &= xTaskCreate(logging::system_monitor_task, "SysMonitor",
-            configMINIMAL_STACK_SIZE * 2, (void *) pdMS_TO_TICKS(5000), 1, nullptr) == pdPASS;
+    all_created &= xTaskCreate(logging::stats_monitor_task, "SysMonitor",
+            configMINIMAL_STACK_SIZE * 2, (void *) pdMS_TO_TICKS(10*1000), 1, nullptr) == pdPASS;
     configASSERT(all_created);
 
     /*** Print debug memory debug information *********************************/

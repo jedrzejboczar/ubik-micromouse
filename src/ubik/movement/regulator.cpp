@@ -124,7 +124,6 @@ void regulation_task(void *) {
         uint32_t micros = cycles_counter::get_us();
         // m[n] = m[n-1] + (a[n] - m[n-1]) / n
         mean_regulation_time_us += (micros - mean_regulation_time_us) / (mean_regulation_time_i++ + 1);
-        // mean_regulation_time_us = 0;
 
         // TODO: use a timer instead, for a higher frequency
         vTaskDelayUntil(&last_start, pdMS_TO_TICKS(1));
