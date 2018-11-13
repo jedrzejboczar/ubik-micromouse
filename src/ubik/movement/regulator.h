@@ -1,5 +1,20 @@
 #pragma once
 
+#include <cstddef>
+#include <cmath>
+#include <algorithm>
+#include <utility>
+#include <tuple>
+
+#include "FreeRTOS.h"
+#include "task.h"
+#include "semphr.h"
+
+#include "pid.h"
+#include "motor_control.h"
+#include "spi_devices.h"
+#include "robot_parameters.h"
+
 namespace movement {
 namespace regulator {
 
@@ -10,9 +25,9 @@ void initialise();
 void regulation_task(void *);
 
 // set the absolute value of current regulation target
-void set_regulation_target(float translation_meters, float rotation_radians);
+void set_target(float translation_meters, float rotation_radians);
 // modify the value of current regulation target by given amouts (more practical)
-void update_regulation_target(float translation_meters, float rotation_radians);
+void update_target_by(float translation_meters, float rotation_radians);
 
 
 } // namespace regulator

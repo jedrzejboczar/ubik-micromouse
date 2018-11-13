@@ -4,11 +4,14 @@
 
 #include "ubik/logging/logging.h"
 #include "ubik/logging/stats.h"
+#include "timing.h"
+
+#include "movement/controller.h"
+
 
 void run();
 extern "C" void extern_main(void) { run(); }
 
-#include "timing.h"
 
 void stats_task(void *) {
     auto last_start = xTaskGetTickCount();
@@ -23,19 +26,8 @@ void stats_task(void *) {
     }
 }
 
-#include "ubik/movement/motor_control.h"
-// #include "ubik/movement/as5045.h"
-// #include "ubik/logging/print_bits.h"
-#include "ubik/movement/spi_devices.h"
-#include "movement/regulator.h"
-#include "movement/controller.h"
-
 
 extern "C" TIM_HandleTypeDef htim4;
-spi::EncoderReadings current;
-volatile int angle_left = 0;
-volatile int angle_right = 0;
-
 extern "C" void callback_timer_period_elapsed(TIM_HandleTypeDef *htim) {
     if (htim->Instance == htim4.Instance) {
         // // read encoders
@@ -54,27 +46,21 @@ extern "C" void callback_timer_period_elapsed(TIM_HandleTypeDef *htim) {
 void set_target_position_task(void *) {
     vTaskDelay(1000);
 
-    movement::Controller controller(500);
+    // using constants::deg2rad;
+    // movement::Controller controller(500);
+    // movement::motors::set_enabled(true);
+    //
+    // controller.move_line(.10, 0.25, 0.3);
+    // vTaskDelay(pdMS_TO_TICKS(500));
+    // controller.move_turn(deg2rad(90), deg2rad(70), deg2rad(90));
+
 
     movement::motors::set_enabled(true);
-    controller.move_line(.10, 0.25, 0.3, 0.05);
-    controller.move_line(.20, 0.05, 0.3);
+    for (int i = 0; i < 500; i++) {
+        movement::regulator::update_target_by(0.0001, 0);
+        vTaskDelay(1);
+    }
 
-
-    // movement::motors::set_enabled(true);
-    // movement::regulator::set_regulation_target(0.1, 0);
-    // vTaskDelay(2000);
-    // // movement::motors::set_enabled(false);
-
-    // movement::motors::set_enabled(true);
-    // int imax = 2500;
-    // for (int i = 0; i < 2500; i++) {
-    //     // logging::printf(100, "setting trans = %f\n", 0.001 * i);
-    //     // logging::printf(100, "setting trans = %d / 1000\n", 1 * i);
-    //     movement::regulator::set_regulation_target(0.10 * i / imax, 0);
-    //     vTaskDelay(2);
-    // }
-    // // movement::motors::set_enabled(false);
 
     while(1) {
         vTaskDelay(1000);

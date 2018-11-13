@@ -54,9 +54,10 @@ public:
             update_velocity();
 
             // reduce remaining distance
-            dist_remaining -= vel_current * dt;
+            float distance_traveled = vel_current * dt;
+            dist_remaining -= distance_traveled;
 
-            regulator::update_regulation_target(vel_current * dt, 0);
+            regulator::update_target_by(distance_traveled, 0);
 
             // wait
             delay(dt);
@@ -65,6 +66,44 @@ public:
         // compensate for the last step if any distance is still remaining (t = s/v)
         dist_remaining = 0;
         delay(dist_remaining / vel_current);
+    }
+
+    // all in radians, radians per sec, etc.
+    void move_turn(float angle, float vel_desired, float acc, float vel_final=0) {
+        // use only absolute values, direction only affects the resulting velocities sign
+        angle = std::abs(angle);
+        vel_desired = std::abs(vel_desired);
+        acc = std::abs(acc);
+        vel_final = std::abs(vel_final);
+
+        this->acc = acc;
+        this->vel_desired = vel_desired;
+        this->dist_remaining = angle;
+
+        bool is_breaking = false;
+        while (dist_remaining > vel_current * dt) {
+            if (!is_breaking && should_be_breaking(dist_remaining, vel_final)) {
+                this->vel_desired = vel_final;
+                is_breaking = true;
+            }
+
+            update_velocity();
+
+            // reduce remaining distance
+            float distance_traveled = vel_current * dt;
+            dist_remaining -= distance_traveled;
+
+            // distance_traveled is in radians
+            regulator::update_target_by(0, distance_traveled);
+
+            // wait
+            delay(dt);
+        }
+
+        // compensate for the last step if any distance is still remaining (t = s/v)
+        dist_remaining = 0;
+        delay(dist_remaining / vel_current);
+
     }
 
     /*

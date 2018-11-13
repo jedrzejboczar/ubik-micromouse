@@ -1,18 +1,4 @@
-
-#include <cstddef>
-#include <cmath>
-#include <algorithm>
-#include <utility>
-#include <tuple>
-
-#include "FreeRTOS.h"
-#include "task.h"
-#include "semphr.h"
-
-#include "pid.h"
-#include "motor_control.h"
-#include "spi_devices.h"
-#include "robot_parameters.h"
+#include "regulator.h"
 
 #include "ubik/logging/logging.h"
 
@@ -26,7 +12,7 @@ static constexpr float   LOOP_FREQUENCY = 1e3;
 static void lock();
 static void unlock();
 static void update_position(int32_t &position, int32_t angle, int32_t last_angle);
-static std::pair<int32_t, int32_t>
+static std::pair<float, float>
     convert_to_encoder_ticks(float translation_meters, float rotation_radians);
 
 // SP and PV of PID regulation
@@ -34,10 +20,11 @@ static std::pair<int32_t, int32_t>
 // we need to keep track of these as the angle wraps to zero after max value
 // the unit is the same as for encoder readings
 // for 12-bit resulution we can store ~53km of forward motion
-static int32_t set_point_left = 0;
-static int32_t set_point_right = 0;
 static int32_t position_left = 0;
 static int32_t position_right = 0;
+// we need this to be float to avoid numerical errors
+static float set_point_left = 0;
+static float set_point_right = 0;
 
 SemaphoreHandle_t state_mutex = nullptr;
 
@@ -107,14 +94,16 @@ void regulation_task(void *) {
             motors::set_direction(
                     out_left  > 0 ? FORWARDS : BACKWARDS,
                     out_right > 0 ? FORWARDS : BACKWARDS);
-            motors::set_pulse(std::abs(out_left), std::abs(out_right));
+            motors::set_pulse(
+                    std::lround(std::abs(out_left)),
+                    std::lround(std::abs(out_right)));
 
 
             // DEBUG
             if (counter++ % 50 == 0)
                 logging::printf(120, "%8d,%8d,%8d,%8d,%8d,%8d\n",
-                        (int) set_point_left, position_left, (int) out_left,
-                        (int) set_point_right, position_right, (int) out_right);
+                        (int) set_point_left, (int) position_left, (int) out_left,
+                        (int) set_point_right, (int) position_right, (int) out_right);
 
 
             // release the mutex
@@ -126,8 +115,8 @@ void regulation_task(void *) {
     }
 }
 
-void set_regulation_target(float translation_meters, float rotation_radians) {
-    int32_t ticks_left, ticks_right;
+void set_target(float translation_meters, float rotation_radians) {
+    float ticks_left, ticks_right;
     std::tie(ticks_left, ticks_right)
         = convert_to_encoder_ticks(translation_meters, rotation_radians);
 
@@ -137,8 +126,8 @@ void set_regulation_target(float translation_meters, float rotation_radians) {
     unlock();
 }
 
-void update_regulation_target(float translation_meters, float rotation_radians) {
-    int32_t ticks_left, ticks_right;
+void update_target_by(float translation_meters, float rotation_radians) {
+    float ticks_left, ticks_right;
     std::tie(ticks_left, ticks_right)
         = convert_to_encoder_ticks(translation_meters, rotation_radians);
 
@@ -155,9 +144,9 @@ void update_position(int32_t &position, int32_t angle, int32_t last_angle) {
     // if delta is greater than half turn, we assume it is movement in other direction
     if (std::abs(angle_delta) > MAX_ENCODER_READING / 2) {
         if (angle_delta >= 0)
-            angle_delta -= MAX_ENCODER_READING / 2;
+            angle_delta -= MAX_ENCODER_READING;
         else
-            angle_delta += MAX_ENCODER_READING / 2;
+            angle_delta += MAX_ENCODER_READING;
     }
     // integrate the position delta to obtain cumulative position
     position += angle_delta;
@@ -175,7 +164,7 @@ void update_position(int32_t &position, int32_t angle, int32_t last_angle) {
  *    When v_ang is positive, we turn left, looking from top.
  *    This is the same as with positive angle in Euclidean coordinates system.
  */
-std::pair<int32_t, int32_t> convert_to_encoder_ticks(float translation_meters, float rotation_radians)
+std::pair<float, float> convert_to_encoder_ticks(float translation_meters, float rotation_radians)
 {
     // convert trans/rot to distance traveled by each wheel
     float distance_left_m = translation_meters - constants::rotation_angle2arc_length(rotation_radians);
@@ -187,10 +176,7 @@ std::pair<int32_t, int32_t> convert_to_encoder_ticks(float translation_meters, f
     // convert number of turns to encoder ticks
     float n_ticks_left = n_turns_left * MAX_ENCODER_READING;
     float n_ticks_right = n_turns_right * MAX_ENCODER_READING;
-    // round
-    int32_t ticks_left = std::lround(n_ticks_left);
-    int32_t ticks_right = std::lround(n_ticks_right);
-    return std::make_pair(ticks_left, ticks_right);
+    return std::make_pair(n_ticks_left, n_ticks_right);
 }
 
 
