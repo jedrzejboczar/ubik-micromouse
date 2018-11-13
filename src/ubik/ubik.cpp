@@ -32,7 +32,6 @@ extern "C" void callback_timer_period_elapsed(TIM_HandleTypeDef *htim) {
 void set_target_position_task(void *) {
     using constants::deg2rad;
     movement::Controller controller(1000);
-    movement::motors::set_enabled(true);
 
     float vel_lin = 0.50;
     float acc_lin = 0.40;
@@ -45,6 +44,7 @@ void set_target_position_task(void *) {
             vTaskDelay(50);
 
         logging::printf(100, "Starting...\n");
+        movement::regulator::set_enabled(true);
         vTaskDelay(500);
         while (HAL_GPIO_ReadPin(SW_Start_GPIO_Port, SW_Start_Pin) == GPIO_PIN_RESET) {
             controller.move_turn(deg2rad(45), vel_ang, acc_ang);   controller.reset();
@@ -56,6 +56,7 @@ void set_target_position_task(void *) {
             controller.move_turn(deg2rad(-180), vel_ang, acc_ang); controller.reset();
         }
 
+        movement::regulator::set_enabled(false);
         logging::printf(100, "Stopped.\n");
         vTaskDelay(3000);
     }

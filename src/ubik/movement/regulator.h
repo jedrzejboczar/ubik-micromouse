@@ -24,6 +24,10 @@ namespace regulator {
 void initialise();
 void regulation_task(void *);
 
+// this calls motors::set_enabled() but also handles internal regulator
+// state correctly
+void set_enabled(bool enabled);
+
 // set the absolute value of current regulation target
 void set_target(float translation_meters, float rotation_radians);
 // modify the value of current regulation target by given amouts (more practical)

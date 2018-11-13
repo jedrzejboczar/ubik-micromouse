@@ -27,6 +27,11 @@ static int32_t position_right = 0;
 static float set_point_left = 0;
 static float set_point_right = 0;
 
+// internal state of regulator: enabling/disabling
+static bool regulation_enabled = false;
+
+// needed to guard all global variables access from different modules
+// (all public functions should use the mutex)
 SemaphoreHandle_t state_mutex = nullptr;
 
 // timing stats
@@ -43,6 +48,14 @@ void initialise() {
     // must be guarded anyway)
     state_mutex = xSemaphoreCreateMutex();
     configASSERT(state_mutex != nullptr);
+}
+
+void set_enabled(bool enabled) {
+    // if we enable regulation we have to reset regulation state
+    lock();
+    regulation_enabled = enabled;
+    unlock();
+    motors::set_enabled(enabled);
 }
 
 void regulation_task(void *) {
@@ -63,6 +76,7 @@ void regulation_task(void *) {
     // prepare loop timing
     auto last_start = xTaskGetTickCount();
     size_t counter = 0;
+    bool is_enabled = regulation_enabled;
 
     while (1) {
         // timing start
@@ -90,23 +104,36 @@ void regulation_task(void *) {
         bool taken = xSemaphoreTake(state_mutex, 0) == pdPASS;
 
         if (taken) {
-            // calculate PID output
-            float out_left = pid_left.next(set_point_left, position_left);
-            float out_right = pid_right.next(set_point_right, position_right);
+            // check if there was a request to enable/disable the regulator
+            if (is_enabled != regulation_enabled) {
+                is_enabled = regulation_enabled;
+                // we need to reset state on re-enabling
+                if (is_enabled) {
+                    set_point_left = position_left;
+                    set_point_right = position_right;
+                    pid_left.reset_state();
+                    pid_right.reset_state();
+                }
+            }
 
-            // normalize output so that we won't have to change parameters max_pulse changes
-            // normalize such that PID output = 1.0 corresponds to 100% pulse
-            out_left = out_left * motors::max_pulse();
-            out_right = out_right * motors::max_pulse();
+            if (is_enabled) {
+                // calculate PID output
+                float out_left = pid_left.next(set_point_left, position_left);
+                float out_right = pid_right.next(set_point_right, position_right);
 
-            // calculate motor directions and pulse
-            motors::set_direction(
-                    out_left  > 0 ? FORWARDS : BACKWARDS,
-                    out_right > 0 ? FORWARDS : BACKWARDS);
-            motors::set_pulse(
-                    std::lround(std::abs(out_left)),
-                    std::lround(std::abs(out_right)));
+                // normalize output so that we won't have to change parameters max_pulse changes
+                // normalize such that PID output = 1.0 corresponds to 100% pulse
+                out_left = out_left * motors::max_pulse();
+                out_right = out_right * motors::max_pulse();
 
+                // calculate motor directions and pulse
+                motors::set_direction(
+                        out_left  > 0 ? FORWARDS : BACKWARDS,
+                        out_right > 0 ? FORWARDS : BACKWARDS);
+                motors::set_pulse(
+                        std::lround(std::abs(out_left)),
+                        std::lround(std::abs(out_right)));
+            }
 
             // // DEBUG
             // if (counter++ % 10 == 0)
@@ -126,7 +153,7 @@ void regulation_task(void *) {
         mean_regulation_time_us += (micros - mean_regulation_time_us) / (mean_regulation_time_i++ + 1);
 
         // TODO: use a timer instead, for a higher frequency
-        vTaskDelayUntil(&last_start, pdMS_TO_TICKS(1));
+        vTaskDelayUntil(&last_start, pdMS_TO_TICKS(1000 / LOOP_FREQUENCY));
     }
 }
 
