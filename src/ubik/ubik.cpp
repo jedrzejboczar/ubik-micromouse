@@ -13,20 +13,6 @@ void run();
 extern "C" void extern_main(void) { run(); }
 
 
-void stats_task(void *) {
-    auto last_start = xTaskGetTickCount();
-
-    while(1) {
-        cycles_counter::reset();
-        cycles_counter::start();
-        logging::print_stats();
-        cycles_counter::stop();
-        logging::printf(70, "=== Printing stats took %d us ===\n", cycles_counter::get_us());
-        vTaskDelayUntil(&last_start, pdMS_TO_TICKS(7.5e3));
-    }
-}
-
-
 extern "C" TIM_HandleTypeDef htim4;
 extern "C" void callback_timer_period_elapsed(TIM_HandleTypeDef *htim) {
     if (htim->Instance == htim4.Instance) {
@@ -90,16 +76,12 @@ void run() {
     // create these tasks here, before starting the scheduler.
 
     bool all_created = true;
-    // all_created &= xTaskCreate(angle_printing_task, "AngPrint",
-    //         configMINIMAL_STACK_SIZE * 2, nullptr, 1, nullptr) == pdPASS;
-    // all_created &= xTaskCreate(mover_task, "Mover",
-    //         configMINIMAL_STACK_SIZE * 2, nullptr, 3, nullptr) == pdPASS;
     all_created &= xTaskCreate(set_target_position_task, "Setter",
             configMINIMAL_STACK_SIZE * 3, nullptr, 2, nullptr) == pdPASS;
     all_created &= xTaskCreate(movement::regulator::regulation_task, "Regulator",
             configMINIMAL_STACK_SIZE * 2, nullptr, 4, nullptr) == pdPASS;
-    all_created &= xTaskCreate(stats_task, "Stats",
-            configMINIMAL_STACK_SIZE * 2, nullptr, 1, nullptr) == pdPASS;
+    all_created &= xTaskCreate(logging::system_monitor_task, "SysMonitor",
+            configMINIMAL_STACK_SIZE * 2, (void *) pdMS_TO_TICKS(5000), 1, nullptr) == pdPASS;
     configASSERT(all_created);
 
     /*** Print debug memory debug information *********************************/

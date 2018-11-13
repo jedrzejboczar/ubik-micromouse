@@ -46,7 +46,6 @@ uint32_t logs_lost;
 uint32_t logs_lost_from_uart_errors;
 uint32_t logs_lost_from_notification_timeouts;
 uint32_t logs_lost_from_isr;
-uint32_t last_uart_transmission_time_us;
 
 // task entry function
 void logger_task(void *);

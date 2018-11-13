@@ -1,6 +1,7 @@
 #include "regulator.h"
 
 #include "ubik/logging/logging.h"
+#include "ubik/timing.h"
 
 namespace movement {
 namespace regulator {
@@ -27,6 +28,10 @@ static float set_point_left = 0;
 static float set_point_right = 0;
 
 SemaphoreHandle_t state_mutex = nullptr;
+
+// timing stats
+float mean_regulation_time_us = 0;
+int32_t mean_regulation_time_i = 0;
 
 
 void initialise() {
@@ -60,6 +65,10 @@ void regulation_task(void *) {
     size_t counter = 0;
 
     while (1) {
+        // timing start
+        cycles_counter::reset();
+        cycles_counter::start();
+
         // read encoders
         readings = spi::read_encoders();
 
@@ -109,6 +118,13 @@ void regulation_task(void *) {
             // release the mutex
             unlock();
         }
+
+        // end timing
+        cycles_counter::stop();
+        uint32_t micros = cycles_counter::get_us();
+        // m[n] = m[n-1] + (a[n] - m[n-1]) / n
+        mean_regulation_time_us += (micros - mean_regulation_time_us) / (mean_regulation_time_i++ + 1);
+        // mean_regulation_time_us = 0;
 
         // TODO: use a timer instead, for a higher frequency
         vTaskDelayUntil(&last_start, pdMS_TO_TICKS(1));

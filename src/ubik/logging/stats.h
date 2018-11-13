@@ -11,5 +11,14 @@ namespace logging {
  */
 void print_stats();
 
+
+/*
+ * Task that collects and prints system information.
+ * As everything here, use for debugging only.
+ * As an argument the number of ticks specifying the delay between
+ * subsequent loops should be passed. It has to be cast to void*.
+ */
+void system_monitor_task(void *ticks_to_wait_as_ptr);
+
 } // namespace logging
 
