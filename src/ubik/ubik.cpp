@@ -30,13 +30,30 @@ extern "C" void callback_timer_period_elapsed(TIM_HandleTypeDef *htim) {
 }
 
 
+
+extern "C" ADC_HandleTypeDef hadc2; // 3 channels: 2 for voltage and current, 1 for line sensors
+
 void monitor(void *) {
     auto check_button = []() {
         return HAL_GPIO_ReadPin(SW_Start_GPIO_Port, SW_Start_Pin) == GPIO_PIN_SET;
     };
 
     bool regulation_on = false;
-    int min_button_delay_ms = 500; // delay between subsequent button presses
+
+    int loop_period_ms = 20;
+
+    int n_button_measurements = 10; // how many samples to take
+    int min_button_on_count = 6; // how many samples are needed to register button press
+    int time_between_measurements_ms = 1; // time between subsequent samples
+    int min_button_delay_ms = 500; // minimum delay between subsequent button presses
+
+    configASSERT(loop_period_ms >  // sampling time + 2ms for ADC + Xms as an error margin
+            n_button_measurements * time_between_measurements_ms + 2 + 5);
+
+    // calibrate ADC (this function waits actually for end of calibartion, even if it's called _Start)
+    auto calibration_result = HAL_ADCEx_Calibration_Start(&hadc2);
+    configASSERT(calibration_result == HAL_OK);
+
 
     auto last_start = xTaskGetTickCount();
     int last_button_press = std::numeric_limits<int>::min();
@@ -45,14 +62,14 @@ void monitor(void *) {
         if (xTaskGetTickCount() - last_button_press > pdMS_TO_TICKS(min_button_delay_ms)) {
             // sample the button for <100 ms
             int button_on_count = 0;
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < n_button_measurements; i++) {
                 if (check_button())
                     button_on_count++;
-                vTaskDelay(8);
+                vTaskDelay(pdMS_TO_TICKS(time_between_measurements_ms));
             }
 
             // register button press when there were 70-100 % positives
-            if (button_on_count > 6) {
+            if (button_on_count > min_button_on_count) {
                 // toggle regulation state on button press
                 regulation_on = !regulation_on;
                 logging::printf(100, "Setting regulation state: %s\n", regulation_on ? "ON" : "OFF");
@@ -63,7 +80,21 @@ void monitor(void *) {
             }
         }
 
-        vTaskDelayUntil(&last_start, pdMS_TO_TICKS(100));
+        // conversion time is about 28us, so we'll just wait for now, we have time
+        int current, voltage;
+        HAL_ADC_Start(&hadc2);
+        vTaskDelay(pdMS_TO_TICKS(1)); // wait MUCH too long for conversion
+        current = HAL_ADC_GetValue(&hadc2);
+        HAL_ADC_Start(&hadc2);
+        vTaskDelay(pdMS_TO_TICKS(1)); // wait MUCH too long for conversion
+        voltage = HAL_ADC_GetValue(&hadc2);
+
+        // logging::printf(80, "current = %6d, voltage = %5.2f\n", current,
+        logging::printf(80, "%5.2f\n",
+                // voltage / ADC_MAX * Vcc * (1/RESISTOR_DIVIDER)
+                static_cast<float>(voltage) / ((1<<12)-1) * 3.3f * (32.0f / 10.0f));
+
+        vTaskDelayUntil(&last_start, pdMS_TO_TICKS(loop_period_ms));
     }
 }
 
@@ -71,8 +102,8 @@ void set_target_position_task(void *) {
     using constants::deg2rad;
     movement::Controller controller(1000);
 
-    float vel_lin = 0.50;
-    float acc_lin = 0.40;
+    float vel_lin = 2.50;
+    float acc_lin = 2.40;
     float vel_ang = deg2rad(300);
     float acc_ang = deg2rad(400);
 
