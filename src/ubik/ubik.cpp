@@ -2,9 +2,10 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include "timing.h"
+#include "system_monitor.h"
 #include "ubik/logging/logging.h"
 #include "ubik/logging/stats.h"
-#include "timing.h"
 
 #include "movement/controller.h"
 
@@ -29,115 +30,6 @@ extern "C" void callback_timer_period_elapsed(TIM_HandleTypeDef *htim) {
     }
 }
 
-
-
-extern "C" ADC_HandleTypeDef hadc2; // 3 channels: 2 for voltage and current, 1 for line sensors
-
-void monitor(void *) {
-    auto check_button = []() {
-        return HAL_GPIO_ReadPin(SW_Start_GPIO_Port, SW_Start_Pin) == GPIO_PIN_SET;
-    };
-
-    bool regulation_on = false;
-
-    constexpr int loop_period_ms = 100;
-
-    constexpr int n_button_measurements = 10; // how many samples to take
-    constexpr int min_button_on_count = 6; // how many samples are needed to register button press
-    constexpr int time_between_measurements_ms = 8; // time between subsequent samples
-    constexpr int min_button_delay_ms = 500; // minimum delay between subsequent button presses
-
-    configASSERT(loop_period_ms >  // sampling time + 2ms for ADC + Xms as an error margin
-            n_button_measurements * time_between_measurements_ms + 2 + 5);
-
-    // calibrate ADC (this function waits actually for end of calibartion, even if it's called _Start)
-    auto calibration_result = HAL_ADCEx_Calibration_Start(&hadc2);
-    configASSERT(calibration_result == HAL_OK);
-
-    auto adc2voltage = [](float adc) {
-        constexpr float MAX_ADC = ((1 << 12) - 1);
-        constexpr float VOLTAGE_RESISTOR_DIV = 10.0 / 32.0;
-        constexpr float VCC = 3.3;
-        return adc / MAX_ADC * VCC * (1 / VOLTAGE_RESISTOR_DIV);
-    };
-
-    // battery constants
-    constexpr int n_cells = 2;
-    constexpr float critical_voltage = 3.1 * n_cells;
-    constexpr float waring_voltage = 3.4 * n_cells;
-    // in fact this variation of: y = a*x + (1-a)*y,
-    // but rather: y[n] = b/2 * x[n] + b/2 * x[n-1] + a*y[n-1]
-    float voltage_iir_b[] = {0.08636403, 0.08636403};
-    float voltage_iir_a[] = {-0.82727195};
-    float last_voltage_x, last_voltage_y;
-
-    // ignore current measurement
-    HAL_ADC_Start(&hadc2);
-    vTaskDelay(pdMS_TO_TICKS(1)); // wait MUCH too long for conversion
-    // get initial voltage
-    HAL_ADC_Start(&hadc2);
-    vTaskDelay(pdMS_TO_TICKS(1)); // wait MUCH too long for conversion
-    last_voltage_x = last_voltage_y = adc2voltage(HAL_ADC_GetValue(&hadc2));
-
-
-    auto last_start = xTaskGetTickCount();
-    int last_button_press = std::numeric_limits<int>::min();
-    while (1) {
-        // when the button has not been used for at least 1 second, to avoid double-press
-        if (xTaskGetTickCount() - last_button_press > pdMS_TO_TICKS(min_button_delay_ms)) {
-            // sample the button for <100 ms
-            int button_on_count = 0;
-            for (int i = 0; i < n_button_measurements; i++) {
-                if (check_button())
-                    button_on_count++;
-                vTaskDelay(pdMS_TO_TICKS(time_between_measurements_ms));
-            }
-
-            // register button press when there were 70-100 % positives
-            if (button_on_count > min_button_on_count) {
-                // toggle regulation state on button press
-                regulation_on = !regulation_on;
-                logging::printf(100, "Setting regulation state: %s\n", regulation_on ? "ON" : "OFF");
-                movement::regulator::set_enabled(regulation_on);
-
-                // reset button timer
-                last_button_press = xTaskGetTickCount();
-            }
-        }
-
-        // conversion time is about 28us, so we'll just wait for now, we have time
-        int current, voltage;
-        HAL_ADC_Start(&hadc2);
-        vTaskDelay(pdMS_TO_TICKS(1)); // wait MUCH too long for conversion
-        current = HAL_ADC_GetValue(&hadc2);
-        HAL_ADC_Start(&hadc2);
-        vTaskDelay(pdMS_TO_TICKS(1)); // wait MUCH too long for conversion
-        voltage = HAL_ADC_GetValue(&hadc2);
-        float voltage_x = adc2voltage(voltage);
-
-        // calculate new_voltage (into last_voltage_y)
-        last_voltage_y = voltage_iir_b[0] * voltage_x + voltage_iir_b[1] * last_voltage_x
-            - voltage_iir_a[0] * last_voltage_y;
-        last_voltage_x = voltage_x;
-
-        // // logging::printf(80, "current = %6d, voltage = %5.2f\n", current,
-        // logging::printf(80, "%5.2f   %5.2f\n",
-        //         // voltage / ADC_MAX * Vcc * (1/RESISTOR_DIVIDER)
-        //         // static_cast<float>(voltage) / ((1<<12)-1) * 3.3f * (32.0f / 10.0f));
-        //         // adc2voltage(voltage));
-        //         last_voltage_x, last_voltage_y);
-        //
-        if (last_voltage_y < critical_voltage)
-            logging::printf(80, "[# WARNING #] Voltage below CRITICAL LEVEL: %.2f < %.2f\n",
-                    last_voltage_y, critical_voltage);
-        else if (last_voltage_y < waring_voltage)
-            logging::printf(80, "[# WARNING #] Voltage below warning level: %.2f < %.2f\n",
-                    last_voltage_y, waring_voltage);
-
-
-        vTaskDelayUntil(&last_start, pdMS_TO_TICKS(loop_period_ms));
-    }
-}
 
 void set_target_position_task(void *) {
     using constants::deg2rad;
@@ -179,7 +71,7 @@ void run() {
     bool all_created = true;
     all_created &= xTaskCreate(set_target_position_task, "Setter",
             configMINIMAL_STACK_SIZE * 3, nullptr, 2, nullptr) == pdPASS;
-    all_created &= xTaskCreate(monitor, "Monitor",
+    all_created &= xTaskCreate(system_monitor_task, "SysMonitor",
             configMINIMAL_STACK_SIZE * 2, (void *) nullptr, 3, nullptr) == pdPASS;
     all_created &= xTaskCreate(movement::regulator::regulation_task, "Regulator",
             configMINIMAL_STACK_SIZE * 2, nullptr, 4, nullptr) == pdPASS;
