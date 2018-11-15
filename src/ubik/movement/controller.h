@@ -17,20 +17,74 @@ namespace movement {
 //     float x, y, theta;
 // };
 
+
+struct Vec2 {
+    float lin;
+    float ang;
+
+    // // https://en.cppreference.com/w/cpp/language/operators : Binary arithmetic operators
+    // Vec2& operator+=(const Vec2& rhs) {
+    //     lin += rhs.lin;
+    //     ang += rhs.ang;
+    //     return *this;
+    // }
+    // friend Vec2 operator+(Vec2 lhs, const Vec2& rhs) {
+    //     lhs += rhs;
+    //     return lhs;
+    // }
+    // Vec2& operator-=(const Vec2& rhs) {
+    //     lin -= rhs.lin;
+    //     ang -= rhs.ang;
+    //     return *this;
+    // }
+    // friend Vec2 operator-(Vec2 lhs, const Vec2& rhs) {
+    //     lhs -= rhs;
+    //     return lhs;
+    // }
+    // Vec2& operator*=(const Vec2& rhs) {
+    //     lin *= rhs.lin;
+    //     ang *= rhs.ang;
+    //     return *this;
+    // }
+    // friend Vec2 operator*(Vec2 lhs, const Vec2& rhs) {
+    //     lhs *= rhs;
+    //     return lhs;
+    // }
+    // Vec2& operator/=(const Vec2& rhs) {
+    //     lin /= rhs.lin;
+    //     ang /= rhs.ang;
+    //     return *this;
+    // }
+    // friend Vec2 operator/(Vec2 lhs, const Vec2& rhs) {
+    //     lhs /= rhs;
+    //     return lhs;
+    // }
+    // friend Vec2 abs(Vec2 vec) {
+    //     vec.lin = std::abs(vec.lin);
+    //     vec.ang = std::abs(vec.ang);
+    //     return vec;
+    // }
+
+};
+
+
+
 class Controller {
     float dt;
-    float dist_remaining;
-    float vel_current;
-    float vel_desired;
-    float acc;
+    Vec2 dist_remaining;
+    Vec2 vel_current;
+    Vec2 vel_desired;
+    Vec2 acc;
 public:
     // TODO: remove this by using separate variables for linear/angular motion
     void reset() {
-        dist_remaining = vel_current = vel_desired = acc = 0;
+        dist_remaining.lin = vel_current.lin = vel_desired.lin = acc.lin = 0;
+        dist_remaining.ang = vel_current.ang = vel_desired.ang = acc.ang = 0;
     }
 
     Controller(float frequency):
-        dt(1.0f / frequency), dist_remaining(0), vel_current(0), vel_desired(0), acc(0) {}
+        dt(1.0f / frequency),
+        dist_remaining{0, 0}, vel_current{0, 0}, vel_desired{0, 0}, acc{0, 0} {}
 
     // void move(Dir dir);
 
@@ -38,84 +92,68 @@ public:
         vTaskDelay(pdMS_TO_TICKS(1e3f * dt));
     }
 
-    // move by given distance, try to achieve vel_desired with given acc, end with vel_final
-    // all input values should be positive (absolute values are taken)
-    void move_line(float distance, float vel_desired, float acc, float vel_final=0) {
-        int direction = distance > 0 ? 1 : -1;
+    // all in radians, radians per sec, etc.
+    void move_arc(Vec2 distance, Vec2 vel_desired, Vec2 acc, Vec2 vel_final=Vec2{0, 0}) {
+        int direction_lin = distance.lin > 0 ? 1 : -1;
+        int direction_ang = distance.ang > 0 ? 1 : -1;
 
         // use only absolute values, direction only affects the resulting velocities sign
-        distance = std::abs(distance);
-        vel_desired = std::abs(vel_desired);
-        acc = std::abs(acc);
-        vel_final = std::abs(vel_final);
+        distance.lin = std::abs(distance.lin);
+        distance.ang = std::abs(distance.ang);
+        vel_desired.lin = std::abs(vel_desired.lin);
+        vel_desired.ang = std::abs(vel_desired.ang);
+        acc.lin = std::abs(acc.lin);
+        acc.ang = std::abs(acc.ang);
+        vel_final.lin = std::abs(vel_final.lin);
+        vel_final.ang = std::abs(vel_final.ang);
 
+        // save the values for other functions
         this->acc = acc;
         this->vel_desired = vel_desired;
         this->dist_remaining = distance;
 
-        bool is_breaking = false;
-        while (dist_remaining > vel_current * dt) {
-            if (!is_breaking && should_be_breaking(dist_remaining, vel_final)) {
-                this->vel_desired = vel_final;
-                is_breaking = true;
+        bool is_breaking_lin = false;
+        bool is_breaking_ang = false;
+        while (dist_remaining.lin > vel_current.lin * dt
+                || dist_remaining.ang > vel_current.ang * dt)
+        {
+            // if we have to start breaking, set the desired velocity to the final one
+            if (!is_breaking_lin && should_be_breaking(
+                        dist_remaining.lin, vel_current.lin, vel_final.lin, acc.lin))
+            {
+                this->vel_desired.lin = vel_final.lin;
+                is_breaking_lin = true;
+            }
+            if (!is_breaking_ang && should_be_breaking(
+                        dist_remaining.ang, vel_current.ang, vel_final.ang, acc.ang))
+            {
+                this->vel_desired.ang = vel_final.ang;
+                is_breaking_ang = true;
             }
 
             // reduce remaining distance
-            float distance_traveled = vel_current * dt;
-            dist_remaining -= distance_traveled;
+            float distance_traveled_lin = vel_current.lin * dt;
+            float distance_traveled_ang = vel_current.ang * dt;
+            dist_remaining.lin -= distance_traveled_lin;
+            dist_remaining.ang -= distance_traveled_ang;
 
             // update after moving to avoid deadlock
-            update_velocity();
-
-            regulator::update_target_by(direction * distance_traveled, 0);
-
-            // wait
-            delay(dt);
-        }
-
-        // compensate for the last step if any distance is still remaining (t = s/v)
-        dist_remaining = 0;
-        delay(dist_remaining / vel_current);
-    }
-
-    // all in radians, radians per sec, etc.
-    void move_turn(float angle, float vel_desired, float acc, float vel_final=0) {
-        int direction = angle > 0 ? 1 : -1;
-
-        // use only absolute values, direction only affects the resulting velocities sign
-        angle = std::abs(angle);
-        vel_desired = std::abs(vel_desired);
-        acc = std::abs(acc);
-        vel_final = std::abs(vel_final);
-
-        this->acc = acc;
-        this->vel_desired = vel_desired;
-        this->dist_remaining = angle;
-
-        bool is_breaking = false;
-        while (dist_remaining > vel_current * dt) {
-            if (!is_breaking && should_be_breaking(dist_remaining, vel_final)) {
-                this->vel_desired = vel_final;
-                is_breaking = true;
-            }
-
-            // reduce remaining distance
-            float distance_traveled = vel_current * dt;
-            dist_remaining -= distance_traveled;
-
-            // update after moving to avoid deadlock
-            update_velocity();
+            update_velocity(vel_current.lin, vel_desired.lin, acc.lin);
+            update_velocity(vel_current.ang, vel_desired.ang, acc.ang);
 
             // distance_traveled is in radians
-            regulator::update_target_by(0, direction * distance_traveled);
+            regulator::update_target_by(direction_lin * distance_traveled_lin,
+                    direction_ang * distance_traveled_ang);
 
             // wait
             delay(dt);
         }
 
         // compensate for the last step if any distance is still remaining (t = s/v)
-        dist_remaining = 0;
-        delay(dist_remaining / vel_current);
+        dist_remaining.lin = dist_remaining.ang = 0;
+        float t_lin = dist_remaining.lin / vel_current.lin;
+        float t_ang = dist_remaining.ang / vel_current.ang;
+        delay(std::max(t_lin, t_ang));
 
     }
 
@@ -132,7 +170,7 @@ public:
      * s = (vc^2 - vf^2) / 2a
      * s = (vc + vf)(vc - vf) / 2a
      */
-    bool should_be_breaking(float dist_remaining, float vel_final)  {
+    bool should_be_breaking(float dist_remaining, float vel_current, float vel_final, float acc)  {
         float dist_required = (vel_current + vel_final) * (vel_current - vel_final) / (2 * acc);
         return dist_remaining <= dist_required;
     }
@@ -148,7 +186,7 @@ public:
      *     +---------------------------------------------------->
      *                              time
      */
-    void update_velocity() {
+    void update_velocity(float &vel_current, float vel_desired, float acc) {
         if (vel_current < vel_desired) {
             vel_current += acc * dt;
             vel_current = std::min(vel_current, vel_desired); // remove overshoot

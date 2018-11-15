@@ -111,6 +111,6 @@ append_target_flags(${CMAKE_PROJECT_NAME}
     --specs=nosys.specs
     --specs=nano.specs
     # --specs=rdimon.specs  # when we want semihosting use this instrad of nano.specs
-    "-u _printf_float"  # support %f in printf (disabled by default, adds about 7.5 kB binary size)
+    # "-u _printf_float"  # support %f in printf (disabled by default, adds about 7.5 kB binary size)
     )
 

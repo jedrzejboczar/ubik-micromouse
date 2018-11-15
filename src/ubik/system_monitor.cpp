@@ -101,8 +101,8 @@ void system_monitor_task(void *) {
         // check the voltage
         if (last_voltage < CRITICAL_VOLTAGE) {
             if (xTaskGetTickCount() - last_critical > pdMS_TO_TICKS(VOLTAGE_WARINGS_PERIOD_MS)) {
-                logging::printf(80, "[# CRITICAL #] Voltage below critical level: %5.2f < %5.2f\n",
-                        last_voltage, CRITICAL_VOLTAGE);
+                logging::printf(80, "[# CRITICAL #] Voltage below critical level: %d < %d [mV]\n",
+                        static_cast<int>(last_voltage * 1e3f), static_cast<int>(CRITICAL_VOLTAGE * 1e3f));
                 last_critical = xTaskGetTickCount();
             }
             if (IS_BATTERY_SUPPLY)
@@ -112,8 +112,8 @@ void system_monitor_task(void *) {
             regulation_on_voltage = true;
             if (last_voltage < WARING_VOLTAGE) {
                 if (xTaskGetTickCount() - last_warning > pdMS_TO_TICKS(VOLTAGE_WARINGS_PERIOD_MS)) {
-                    logging::printf(80, "[# WARNING #] Voltage below warning level: %5.2f < %5.2f\n",
-                            last_voltage, WARING_VOLTAGE);
+                    logging::printf(80, "[# WARNING #] Voltage below warning level: %d < %d [mV]\n",
+                        static_cast<int>(last_voltage * 1e3f), static_cast<int>(WARING_VOLTAGE * 1e3f));
                     last_warning = xTaskGetTickCount();
                 }
             }

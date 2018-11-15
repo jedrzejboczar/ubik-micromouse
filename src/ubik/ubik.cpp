@@ -42,13 +42,15 @@ void set_target_position_task(void *) {
 
     while (1) {
         logging::printf(50, "Next cycle\n");
-        controller.move_turn(deg2rad(45), vel_ang, acc_ang);   controller.reset();
-        controller.move_turn(deg2rad(-90), vel_ang, acc_ang);  controller.reset();
-        controller.move_turn(deg2rad(45), vel_ang, acc_ang);   controller.reset();
-        controller.move_line(.20, vel_lin, acc_lin);           controller.reset();
-        controller.move_turn(deg2rad(180), vel_ang, acc_ang);  controller.reset();
-        controller.move_line(.20, vel_lin, acc_lin);           controller.reset();
-        controller.move_turn(deg2rad(-180), vel_ang, acc_ang); controller.reset();
+
+        using movement::Vec2;
+        controller.move_arc({0,   deg2rad(45)   }, { 0, vel_ang }, { 0, acc_ang });
+        controller.move_arc({0,   deg2rad(-90)  }, { 0, vel_ang }, { 0, acc_ang });
+        controller.move_arc({0,   deg2rad(45)   }, { 0, vel_ang }, { 0, acc_ang });
+        controller.move_arc({.20, 0             }, { vel_lin, 0 }, { acc_lin, 0 });
+        controller.move_arc({0,   deg2rad(180)  }, { 0, vel_ang }, { 0, acc_ang });
+        controller.move_arc({.20, 0             }, { vel_lin, 0 }, { acc_lin, 0 });
+        controller.move_arc({0,   deg2rad(-180) }, { 0, vel_ang }, { 0, acc_ang });
     }
 }
 
