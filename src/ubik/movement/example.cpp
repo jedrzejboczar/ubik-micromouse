@@ -1,4 +1,4 @@
-#include "controller.cpp"
+#include "controller.h"
 
 #include <cstdio>
 #include <iostream>
@@ -11,11 +11,18 @@
 #include <cassert>
 
 float t = 0;
+using movement::Vec2;
 std::vector<float> g_time;
-std::vector<float> g_dist_remaining;
-std::vector<float> g_vel_current;
-std::vector<float> g_vel_desired;
-std::vector<float> g_acc;
+std::vector<Vec2> g_dist_remaining;
+std::vector<Vec2> g_vel_current;
+std::vector<Vec2> g_vel_desired;
+std::vector<Vec2> g_acc;
+
+// std::ostream& operator<<(std::ostream& os, const Vec2& obj)
+// {
+//     os << obj.lin << "," << obj.ang;
+//     return os;
+// }
 
 void movement::Controller::delay(float dt) {
     g_time.push_back(t);
@@ -40,28 +47,39 @@ void movement::Controller::delay(float dt) {
 
 void save_to_file() {
     std::ofstream file;
-    file.open("sim.csv");
+    file.open("sim_lin.csv");
     file << "time,dist_remaining,vel_current,vel_desired,acc" << std::endl;
     for (size_t i = 0; i < g_time.size(); i++) {
         file
             << g_time[i] << ","
-            << g_dist_remaining[i] << ","
-            << g_vel_current[i] << ","
-            << g_vel_desired[i] << ","
-            << g_acc[i] << std::endl;
+            << g_dist_remaining[i].lin << ","
+            << g_vel_current[i].lin << ","
+            << g_vel_desired[i].lin << ","
+            << g_acc[i].lin << std::endl;
+    }
+    file.close();
+    file.open("sim_ang.csv");
+    file << "time,dist_remaining,vel_current,vel_desired,acc" << std::endl;
+    for (size_t i = 0; i < g_time.size(); i++) {
+        file
+            << g_time[i] << ","
+            << g_dist_remaining[i].ang << ","
+            << g_vel_current[i].ang << ","
+            << g_vel_desired[i].ang << ","
+            << g_acc[i].ang << std::endl;
     }
     file.close();
 }
 
 int main()
 {
-    float dt = 0.001;
-    movement::Controller c(dt);
+    float f = 1000;
+    movement::Controller c(f);
     // move_line(distance, vel_desired, acc, vel_final=0)
-    float acc = 2.0;
-    c.move_line(3.0, 2, acc, 1);
-    c.move_line(2.0, 1, acc, 0.5);
-    c.move_line(3.0, 0.5, acc);
+    float acc = 2.5;
+    c.move_arc({0.8, 0}, {1.3, 0}, {acc, 0});
+    // c.move_arc({1.0, 0}, {1.0, 0}, {acc, 0});
+    // c.move_arc({1.0, 0}, {0.5, 0}, {acc, 0});
 
     save_to_file();
     system("python example.py");

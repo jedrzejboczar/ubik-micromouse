@@ -26,7 +26,7 @@ static float adc2voltage(float adc_reading);
 
 void system_monitor_task(void *) {
     // current regulation state
-    bool regulation_on_button = false;
+    bool regulation_on_button = REGULATION_START_ON;
     bool regulation_on_voltage = false;
     // decides if regulation should be enabled or not
     auto set_regulation_state = [&regulation_on_button, &regulation_on_voltage] () {

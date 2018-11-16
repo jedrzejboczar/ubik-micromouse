@@ -8,6 +8,8 @@
 static constexpr float LOOP_FREQ_HZ = 10;
 static constexpr float VOLTAGE_WARINGS_FREQ_HZ = 1;
 
+// button
+static constexpr bool REGULATION_START_ON = true; // state in which to start robot
 // button debouncing
 static constexpr int N_BUTTON_MEASUREMENTS = 10; // how many samples to take
 static constexpr int MIN_BUTTON_ON_COUNT = 6; // how many samples are needed to register button press

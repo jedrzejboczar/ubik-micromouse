@@ -31,12 +31,16 @@ extern "C" void callback_timer_period_elapsed(TIM_HandleTypeDef *htim) {
 }
 
 
+void movement::Controller::delay(float dt) {
+    vTaskDelay(pdMS_TO_TICKS(1e3f * dt));
+}
+
 void set_target_position_task(void *) {
     using constants::deg2rad;
-    movement::Controller controller(1000);
+    movement::Controller controller(100);
 
-    float vel_lin = 2.50;
-    float acc_lin = 2.40;
+    float vel_lin = 0.50;
+    float acc_lin = 0.40;
     float vel_ang = deg2rad(300);
     float acc_ang = deg2rad(400);
 
@@ -51,6 +55,8 @@ void set_target_position_task(void *) {
         controller.move_arc({0,   deg2rad(180)  }, { 0, vel_ang }, { 0, acc_ang });
         controller.move_arc({.20, 0             }, { vel_lin, 0 }, { acc_lin, 0 });
         controller.move_arc({0,   deg2rad(-180) }, { 0, vel_ang }, { 0, acc_ang });
+
+        vTaskDelay(pdMS_TO_TICKS(1500));
     }
 }
 
