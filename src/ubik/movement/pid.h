@@ -15,7 +15,6 @@
  * TODO: implementation could be optimized if needed
  */
 class PID {
-    float dt;
     float prev_e = 0;
     float prev_PV = 0;
     float prev2_PV = 0;
@@ -36,9 +35,6 @@ public:
         P = p; I = i; D = d;
     }
 
-    // create PID regulator for the given regulation frequency
-    PID(float freq): dt(1.0f / freq) {}
-
     // request reseting the state on next step
     // this is not done directly to avoid any possible problems
     // with concurency, also needs to know current PV
@@ -47,7 +43,7 @@ public:
     }
 
     // calculate the next value of output
-    float next(float SP, float PV) {
+    float next(float SP, float PV, float dt) {
         if (should_reset_state)
             reset(PV);
 

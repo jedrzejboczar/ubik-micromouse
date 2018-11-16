@@ -60,7 +60,7 @@ void set_enabled(bool enabled) {
 
 void regulation_task(void *) {
     // prepare PID regulators
-    PID pid_left(LOOP_FREQUENCY), pid_right(LOOP_FREQUENCY);
+    PID pid_left, pid_right;
     pid_left .set_params(3e-5, .1e-6/* , .1e-6 */);
     pid_right.set_params(3e-5, .1e-6/* , .1e-6 */);
 
@@ -118,8 +118,9 @@ void regulation_task(void *) {
 
             if (is_enabled) {
                 // calculate PID output
-                float out_left = pid_left.next(set_point_left, position_left);
-                float out_right = pid_right.next(set_point_right, position_right);
+                float dt = 1.0f / LOOP_FREQUENCY;
+                float out_left = pid_left.next(set_point_left, position_left, dt);
+                float out_right = pid_right.next(set_point_right, position_right, dt);
 
                 // normalize output so that we won't have to change parameters max_pulse changes
                 // normalize such that PID output = 1.0 corresponds to 100% pulse
