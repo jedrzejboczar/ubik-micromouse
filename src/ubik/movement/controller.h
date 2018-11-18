@@ -2,11 +2,9 @@
 
 #include <algorithm>
 
-// #include "ubik/maze/directions.h"
+#include "regulator.h"
+#include "ubik/logging/logging.h"
 
-// #include "regulator.h"
-
-// #include "ubik/logging/logging.h"
 
 namespace movement {
 
@@ -28,8 +26,9 @@ class Controller {
     Vec2 dist_remaining;
     Vec2 vel_current;
 
-    Vec2 acc;
-    Vec2 vel_desired;
+    // // for debugging
+    // Vec2 acc;
+    // Vec2 vel_desired;
 public:
     Controller(float frequency):
         dt(1.0f / frequency),
@@ -37,11 +36,19 @@ public:
         vel_current{0, 0}
     {  }
 
-    // void move(Dir dir);
-
     void delay(float dt);
 
-    // all in radians, radians per sec, etc.
+    /*
+     * Moves robot along an arc described by the distance.
+     * Movement is restricted by the acceleration, desired velocity and final velocity.
+     * All arguments are taken by their absolute value, only the distance's sign determines
+     * movement direction.
+     * Each Vec2 consists of linear and angular coordinate.
+     * Units are from SI table, so:
+     *    linear units: meter, meter/s, ...
+     *    angular units: radian, radian/s, ...
+     *    angular direction is positive when robot turns left
+     */
     void move_arc(Vec2 distance, Vec2 vel_desired, Vec2 acc, Vec2 vel_final=Vec2{0, 0}) {
         int direction_lin = distance.lin > 0 ? 1 : -1;
         int direction_ang = distance.ang > 0 ? 1 : -1;
@@ -52,9 +59,9 @@ public:
         acc = abs(acc);
         vel_final = abs(vel_final);
 
-        // for debugging
-        this->vel_desired = vel_desired;
-        this->acc = acc;
+        // // for debugging
+        // this->vel_desired = vel_desired;
+        // this->acc = acc;
 
         // save the remaining distance to a member variable
         dist_remaining = distance;
@@ -80,7 +87,9 @@ public:
                 vel_desired.lin = vel_final.lin;
                 is_breaking_lin = true;
                 acc.lin = required_breaking_acc(dist_remaining.lin, vel_current.lin, vel_final.lin);
-                this->acc.lin = required_breaking_acc(dist_remaining.lin, vel_current.lin, vel_final.lin);
+
+                // // for debugging
+                // this->acc.lin = required_breaking_acc(dist_remaining.lin, vel_current.lin, vel_final.lin);
             }
             if (is_ang && !is_breaking_ang && should_be_breaking(
                         dist_remaining.ang, vel_current.ang, vel_final.ang, acc.ang))
@@ -88,11 +97,13 @@ public:
                 vel_desired.ang = vel_final.ang;
                 is_breaking_ang = true;
                 acc.ang = required_breaking_acc(dist_remaining.ang, vel_current.ang, vel_final.ang);
-                this->acc.ang = required_breaking_acc(dist_remaining.ang, vel_current.ang, vel_final.ang);
+
+                // // for debugging
+                // this->acc.ang = required_breaking_acc(dist_remaining.ang, vel_current.ang, vel_final.ang);
             }
 
-            // for debugging
-            this->vel_desired = vel_desired;
+            // // for debugging
+            // this->vel_desired = vel_desired;
 
             // calculate new velocity
             float vel_new_lin = update_velocity(vel_current.lin, vel_desired.lin, acc.lin);
@@ -108,10 +119,10 @@ public:
             dist_remaining.lin -= distance_traveled_lin;
             dist_remaining.ang -= distance_traveled_ang;
 
-            // distance_traveled is in radians
-            // regulator::update_target_by(
-            //         direction_lin * distance_traveled_lin,
-            //         direction_ang * distance_traveled_ang);
+            // update regulator target
+            regulator::update_target_by(
+                    direction_lin * distance_traveled_lin,
+                    direction_ang * distance_traveled_ang);
 
             // save the new velocity as current
             vel_current = {vel_new_lin, vel_new_ang};
