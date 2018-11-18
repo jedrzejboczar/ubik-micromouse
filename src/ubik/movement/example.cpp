@@ -18,11 +18,11 @@ std::vector<Vec2> g_vel_current;
 std::vector<Vec2> g_vel_desired;
 std::vector<Vec2> g_acc;
 
-// std::ostream& operator<<(std::ostream& os, const Vec2& obj)
-// {
-//     os << obj.lin << "," << obj.ang;
-//     return os;
-// }
+std::ostream& operator<<(std::ostream& os, const Vec2& obj)
+{
+    os << obj.lin << "," << obj.ang;
+    return os;
+}
 
 void movement::Controller::delay(float dt) {
     g_time.push_back(t);
@@ -41,6 +41,7 @@ void movement::Controller::delay(float dt) {
     //     << "  vel_current = " << vel_current << std::endl
     //     << "  vel_desired = " << vel_desired << std::endl
     //     << "  acc = " << acc << std::endl;
+
     // int ms = 1000 * dt;
     // std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 }
@@ -73,13 +74,19 @@ void save_to_file() {
 
 int main()
 {
+    int counter = 0;
+    auto cnt = [&counter] () { std::cout << counter++ << ". " << g_time.size() << std::endl; };
+
     float f = 1000;
     movement::Controller c(f);
     // move_line(distance, vel_desired, acc, vel_final=0)
     float acc = 2.5;
-    c.move_arc({0.8, 0}, {1.3, 0}, {acc, 0});
-    // c.move_arc({1.0, 0}, {1.0, 0}, {acc, 0});
-    // c.move_arc({1.0, 0}, {0.5, 0}, {acc, 0});
+    c.move_arc({0.8, 0}, {1.3, 0}, {acc, 0.0}, {0.8, 0}); cnt();
+    c.move_arc({1.0, 0}, {1.0, 0}, {acc, acc}); cnt();
+    c.move_arc({0, 1.0}, {0, 0.6}, {acc, acc}); cnt();
+    c.move_arc({1.0, 0}, {0.5, 0}, {acc, 0.0}); cnt();
+    c.move_arc({1., 1.}, {.3, .4}, {acc, acc}); cnt();
+    c.move_arc({1.0, 0}, {0.5, 0}, {acc, acc}); cnt();
 
     save_to_file();
     system("python example.py");
