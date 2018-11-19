@@ -35,6 +35,7 @@ set(CUBE_EXTERN_MAIN   ON)
 add_compile_definitions(
     STM32F103xB
     USE_HAL_DRIVER
+    # USE_FULL_LL_DRIVER
     )
 
 # main target

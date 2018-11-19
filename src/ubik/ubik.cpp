@@ -82,11 +82,11 @@ void run() {
     all_created &= xTaskCreate(set_target_position_task, "Setter",
             configMINIMAL_STACK_SIZE * 3, nullptr, 2, nullptr) == pdPASS;
     all_created &= xTaskCreate(system_monitor_task, "SysMonitor",
-            configMINIMAL_STACK_SIZE * 2, (void *) nullptr, 3, nullptr) == pdPASS;
+            configMINIMAL_STACK_SIZE * 2, nullptr, 3, nullptr) == pdPASS;
     all_created &= xTaskCreate(movement::regulator::regulation_task, "Regulator",
             configMINIMAL_STACK_SIZE * 2, nullptr, 4, nullptr) == pdPASS;
     all_created &= xTaskCreate(logging::stats_monitor_task, "Stats",
-            configMINIMAL_STACK_SIZE * 2, (void *) pdMS_TO_TICKS(10*1000), 1, nullptr) == pdPASS;
+            configMINIMAL_STACK_SIZE * 2, reinterpret_cast<void *>(pdMS_TO_TICKS(10*1000)), 1, nullptr) == pdPASS;
     configASSERT(all_created);
 
     /*** Print debug memory debug information *********************************/
