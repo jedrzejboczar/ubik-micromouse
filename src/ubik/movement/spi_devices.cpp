@@ -21,12 +21,37 @@ static uint16_t      enc_right_cs_pin  = ENC1_Cs_Pin;
 static GPIO_TypeDef *gpioex_cs_port    = GPIO_Exp_Cs_GPIO_Port;
 static uint16_t      gpioex_cs_pin     = GPIO_Exp_Cs_Pin;
 
+namespace MCP {
+// MCP23S08 registers
+static constexpr uint8_t IODIR           = 0x00;
+static constexpr uint8_t IPOL            = 0x01;
+static constexpr uint8_t GPINTEN         = 0x02;
+static constexpr uint8_t DEFVAL          = 0x03;
+static constexpr uint8_t INTCON          = 0x04;
+static constexpr uint8_t IOCON           = 0x05;
+static constexpr uint8_t GPPU            = 0x06;
+static constexpr uint8_t INTF            = 0x07;
+static constexpr uint8_t INTCAP          = 0x08;
+static constexpr uint8_t GPIO            = 0x09;
+static constexpr uint8_t OLAT            = 0x0a;
+// MCP23S08 SPI contorol bytes
+static constexpr uint8_t CTRL_BYTE_WRITE = 0x40;
+static constexpr uint8_t CTRL_BYTE_READ  = 0x41;
+}
+
 /******************************************************************************/
+
+enum Device { AS5045_ENCODERS, MCP23S08_GPIO_EXPANDER };
 
 static SemaphoreHandle_t mutex = nullptr;
 
+// collection of bits for port
+static uint8_t gpioex_port_state = 0;
+
 static bool initialise_encoders();
 static bool initialise_gpio_expander();
+static bool gpio_expander_write3(uint8_t b1, uint8_t b2, uint8_t b3);
+static void configure_spi_mode(Device dev);
 static void lock();
 static void unlock();
 
@@ -56,6 +81,9 @@ EncoderReadings read_encoders() {
     // get access to SPI
     lock();
 
+    // set correct SPI mode
+    configure_spi_mode(AS5045_ENCODERS);
+
     // read left
     HAL_GPIO_WritePin(enc_left_cs_port, enc_left_cs_pin, GPIO_PIN_RESET);
     left_status = HAL_SPI_Receive(&hspi, buffer, 3, timeout_ms);
@@ -80,8 +108,16 @@ EncoderReadings read_encoders() {
 }
 
 bool update_gpio_expander_pins(uint8_t bits_to_set, uint8_t bits_to_reset) {
-    // TODO: update_gpio_expander_pins
-    return false;
+    uint8_t new_state = gpioex_port_state;
+    new_state |= bits_to_set;
+    new_state &= ~(bits_to_reset);
+
+    bool ok = gpio_expander_write3(MCP::CTRL_BYTE_WRITE, MCP::OLAT, new_state);
+
+    if (ok)
+        gpioex_port_state = new_state;
+
+    return ok;
 }
 
 static bool initialise_encoders() {
@@ -98,8 +134,60 @@ static bool initialise_encoders() {
 }
 
 static bool initialise_gpio_expander() {
-    // TODO:
-    return true;
+    // configure all pins as outputs
+    bool ok = gpio_expander_write3(MCP::CTRL_BYTE_WRITE, MCP::IODIR, 0x00);
+
+    // set all pins to LOW
+    ok &= update_gpio_expander_pins(0x00, 0xff);
+    gpioex_port_state = 0x00;
+
+    return ok;
+}
+
+static bool gpio_expander_write3(uint8_t b1, uint8_t b2, uint8_t b3) {
+    int timeout_ms = 2;
+    bool ok;
+
+    // get access to SPI
+    lock();
+
+    // set correct SPI mode
+    configure_spi_mode(MCP23S08_GPIO_EXPANDER);
+
+    uint8_t buffer[] = {b1, b2, b3};
+    HAL_GPIO_WritePin(gpioex_cs_port, gpioex_cs_pin, GPIO_PIN_RESET);
+    ok = HAL_SPI_Transmit(&hspi, buffer, sizeof(buffer), timeout_ms) == HAL_OK;
+    HAL_GPIO_WritePin(gpioex_cs_port, gpioex_cs_pin, GPIO_PIN_SET);
+
+    // return access to SPI
+    unlock();
+
+    return ok;
+}
+
+static void configure_spi_mode(Device dev) {
+    // for AS5045_ENCODERS we need MSB first, CLK pol high, CLK phase 1st edge
+    // (see as5045.h)
+    // for MCP23S08 we need MSB first, CLK pol low, CLK phase 1st edge
+    switch (dev) {
+        case AS5045_ENCODERS:
+            {
+                uint32_t reg = hspi.Instance->CR1;
+                reg |= SPI_CR1_CPOL; // idle high
+                reg &= ~SPI_CR1_CPHA; // 1st edge
+                hspi.Instance->CR1 = reg;
+                break;
+            }
+        case MCP23S08_GPIO_EXPANDER:
+            {
+                uint32_t reg = hspi.Instance->CR1;
+                reg &= ~SPI_CR1_CPOL; // idle low
+                reg &= ~SPI_CR1_CPHA; // 1st edge
+                hspi.Instance->CR1 = reg;
+                break;
+            }
+            break;
+    }
 }
 
 static void lock() {

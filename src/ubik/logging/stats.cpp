@@ -72,7 +72,7 @@ logs_lost = %lu\n\
 logs_lost_from_uart_errors = %lu\n\
 logs_lost_from_notification_timeouts = %lu\n\
 logs_lost_from_isr = %lu\n\
-mean_regulation_time_us = %d\n\
+mean_regulation_time_us = %ld\n\
 ";
 
 static const char fmt_footer[] =

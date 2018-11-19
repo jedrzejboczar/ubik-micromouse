@@ -116,7 +116,7 @@ int main(void)
   /* Configure the system clock */
   SystemClock_Config();
 
-   /* USER CODE BEGIN SysInit */
+  /* USER CODE BEGIN SysInit */
 
   /* Disable SysTick before it shoots!
    *
@@ -605,17 +605,31 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LS_Adr0_Pin LS_Adr1_Pin LS_Adr2_Pin GPIO_Exp_Cs_Pin 
-                           ENC1_Cs_Pin MOT1_Dir2_Pin MOT2_Dir2_Pin MOT2_Dir1_Pin */
-  GPIO_InitStruct.Pin = LS_Adr0_Pin|LS_Adr1_Pin|LS_Adr2_Pin|GPIO_Exp_Cs_Pin 
-                          |ENC1_Cs_Pin|MOT1_Dir2_Pin|MOT2_Dir2_Pin|MOT2_Dir1_Pin;
+  /*Configure GPIO pins : LS_Adr0_Pin LS_Adr1_Pin LS_Adr2_Pin ENC1_Cs_Pin 
+                           MOT1_Dir2_Pin MOT2_Dir2_Pin MOT2_Dir1_Pin */
+  GPIO_InitStruct.Pin = LS_Adr0_Pin|LS_Adr1_Pin|LS_Adr2_Pin|ENC1_Cs_Pin 
+                          |MOT1_Dir2_Pin|MOT2_Dir2_Pin|MOT2_Dir1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : ENC2_Cs_Pin BT_Key_Pin MOT1_Dir1_Pin */
-  GPIO_InitStruct.Pin = ENC2_Cs_Pin|BT_Key_Pin|MOT1_Dir1_Pin;
+  /*Configure GPIO pin : GPIO_Exp_Cs_Pin */
+  GPIO_InitStruct.Pin = GPIO_Exp_Cs_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(GPIO_Exp_Cs_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : ENC2_Cs_Pin */
+  GPIO_InitStruct.Pin = ENC2_Cs_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(ENC2_Cs_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : BT_Key_Pin MOT1_Dir1_Pin */
+  GPIO_InitStruct.Pin = BT_Key_Pin|MOT1_Dir1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

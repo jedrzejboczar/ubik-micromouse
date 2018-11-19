@@ -56,7 +56,9 @@ void set_target_position_task(void *) {
         controller.move_arc({.20, 0             }, { vel_lin, 0 }, { acc_lin, 0 });
         controller.move_arc({0,   deg2rad(-180) }, { 0, vel_ang }, { 0, acc_ang });
 
+        // spi::update_gpio_expander_pins(1 << 6, 1 << 7);
         vTaskDelay(pdMS_TO_TICKS(1500));
+        // spi::update_gpio_expander_pins(1 << 7, 1 << 6);
     }
 }
 

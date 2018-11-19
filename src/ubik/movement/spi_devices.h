@@ -37,9 +37,13 @@ EncoderReadings read_encoders();
  * Sets those bits that are 1 in the argument `bits_to_set`.
  * Resets those bits that are 1 in the argument `bits_to_reset`.
  * Example: to set pin 3 and reset pin 5 (pins are from 0 to 7):
- *          update_gpio_expander_pins(1 << (3-1), 1 << (5-1));
+ *          update_gpio_expander_pins(1 << 3, 1 << 5);
+ *
+ * TODO: try using std::bitset<8> instead
  */
 bool update_gpio_expander_pins(uint8_t bits_to_set, uint8_t bits_to_reset);
+
+
 
 
 } // namespace spi
