@@ -31,7 +31,7 @@ find_cube_root(CUBE_PROJECT_NAME CUBE_PROJECT_ROOT)
 find_startup_file(STARTUP_FILE "${CUBE_PROJECT_NAME}" "${CUBE_PROJECT_ROOT}")
 
 # add STM32Cube included directories
-target_include_directories(${CUBE_TARGET}
+target_include_directories(${CUBE_TARGET} SYSTEM
     PUBLIC ${CUBE_PROJECT_ROOT}/Inc
     PUBLIC ${CUBE_PROJECT_ROOT}/Drivers/STM32F1xx_HAL_Driver/Inc
     PUBLIC ${CUBE_PROJECT_ROOT}/Drivers/STM32F1xx_HAL_Driver/Inc/Legacy

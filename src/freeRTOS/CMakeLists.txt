@@ -8,7 +8,7 @@ set(FREERTOS_COMPILER "GCC")
 set(FREERTOS_ARCHITECTURE "ARM_CM3")
 
 # Includes and sources
-target_include_directories(${CMAKE_PROJECT_NAME}
+target_include_directories(${CMAKE_PROJECT_NAME} SYSTEM
     PUBLIC .
     PUBLIC Source/include
     PUBLIC Source/portable/${FREERTOS_COMPILER}/${FREERTOS_ARCHITECTURE}

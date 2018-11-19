@@ -86,21 +86,21 @@ append_target_flags(${CMAKE_PROJECT_NAME}
     -Wundef                # when undefined identifier used in #if
     -Wuninitialized        # always initialize?
     # -Wcast-align          # (violated by STM32HAL)
-    # -Wcast-qual           # (STM32HAL: assert_param())
+    -Wcast-qual           # (STM32HAL: assert_param())
     # -Wduplicated-branches # (violated by FreeRTOS tasks.c)
-    # -Wredundant-decls   # when declaring something twice (STM32HAL)
-    # -Wwrite-strings       # when converting string constants  (STM32HAL: Error_Handler())
+    -Wredundant-decls   # when declaring something twice (STM32HAL)
+    -Wwrite-strings       # when converting string constants  (STM32HAL: Error_Handler())
 
     C_FLAGS
     -Wjump-misses-init     # not initializing in swtich
     -Wold-style-definition
     -Wstrict-prototypes    # when declaring without argument types
-    # -Wbad-function-cast   # (violated by STM32HAL)
+    -Wbad-function-cast   # (violated by STM32HAL)
 
     CXX_FLAGS
     -fno-exceptions        # disable exceptions - only pumps-up binary
     -fno-rtti              # no runtime-type-info - only pumps-up binary
-    # -Wold-style-cast       # C casting in C++ (voilated when using HAL macros)
+    -Wold-style-cast       # C casting in C++ (voilated when using HAL macros)
     -Wno-register          # disable CMSIS warinings for C++17
 
     LINKER_FLAGS
