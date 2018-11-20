@@ -107,7 +107,7 @@ EncoderReadings read_encoders() {
     return results;
 }
 
-bool update_gpio_expander_pins(uint8_t bits_to_set, uint8_t bits_to_reset) {
+bool gpio::update_pins(uint8_t bits_to_set, uint8_t bits_to_reset) {
     uint8_t new_state = gpioex_port_state;
     new_state |= bits_to_set;
     new_state &= ~(bits_to_reset);
@@ -138,7 +138,7 @@ static bool initialise_gpio_expander() {
     bool ok = gpio_expander_write3(MCP::CTRL_BYTE_WRITE, MCP::IODIR, 0x00);
 
     // set all pins to LOW
-    ok &= update_gpio_expander_pins(0x00, 0xff);
+    ok &= gpio::update_pins(0x00, 0xff);
     gpioex_port_state = 0x00;
 
     return ok;

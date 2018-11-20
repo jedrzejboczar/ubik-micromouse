@@ -3,6 +3,9 @@
 #include "ubik/logging/logging.h"
 #include "ubik/timing.h"
 
+#define TIMING_ENABLED 0
+
+
 namespace movement {
 namespace regulator {
 
@@ -79,9 +82,11 @@ void regulation_task(void *) {
     bool is_enabled = regulation_enabled;
 
     while (1) {
+#if TIMING_ENABLED == 1
         // timing start
         cycles_counter::reset();
         cycles_counter::start();
+#endif
 
         // read encoders
         readings = spi::read_encoders();
@@ -147,11 +152,13 @@ void regulation_task(void *) {
             unlock();
         }
 
+#if TIMING_ENABLED == 1
         // end timing
         cycles_counter::stop();
         uint32_t micros = cycles_counter::get_us();
         // m[n] = m[n-1] + (a[n] - m[n-1]) / n
         mean_regulation_time_us += (micros - mean_regulation_time_us) / (mean_regulation_time_i++ + 1);
+#endif
 
         // TODO: use a timer instead, for a higher frequency
         vTaskDelayUntil(&last_start, pdMS_TO_TICKS(1000 / LOOP_FREQUENCY));

@@ -13,6 +13,12 @@
 void run();
 extern "C" void extern_main(void) { run(); }
 
+void dummy_delay_us(uint32_t micros) {
+    cycles_counter::reset();
+    cycles_counter::start();
+    while (cycles_counter::get_us() < micros) {  }
+    cycles_counter::stop();
+}
 
 extern "C" TIM_HandleTypeDef htim4;
 extern "C" void callback_timer_period_elapsed(TIM_HandleTypeDef *htim) {
@@ -28,6 +34,131 @@ extern "C" void callback_timer_period_elapsed(TIM_HandleTypeDef *htim) {
         // get next PID output
         // set motors pulse
     }
+}
+
+
+/*
+ * ADC1, fclk = 9MHz
+ * single conversion: Ts = (12.5 + 28.5) * 1/fclk ~= 4.556 us
+ * 6 conversions: T6 = 27.333 us
+ * DMA: periph(no-inc)->memory(inc), not-circular, half-word
+ *
+ * Numeration:
+ * - in schematics:
+ *                   Front
+ *          _______________________
+ *  Left   /      o         o      \   Right
+ *        /      /           \      \
+ *       /      /             \      \
+ *      |       DS4         DS3      |
+ *      |  o                      o  |
+ *      |  |                      |  |
+ *      |   DS5               DS2    |
+ *      |                            |
+ *      | o-- DS6            DS1 --o |
+ *      |                            |
+ *
+ * - sensor to ADC1 channel mapping: DS(N) -> CH(N-1)
+ * - in code we use 0-indexing: DS(N) -> DS(N-1)
+ * Conversion regular channels order: 0,1,2,3,4,5
+ *   (instead of the old_ubik's 0,2,4,1,3,5 that was using discontinuous conversions)
+ *
+ * Gpio expander used for turning LEDs on/off:
+ *    LEDS are connected in different order than in pcb/plots/ubik.pdf TODO: update this pdf
+ *    they are actually connected in the order: GPIOEX 0-5 --> DS 4,3,2,1,5,6
+ *
+ */
+extern "C" ADC_HandleTypeDef hadc1;
+
+struct DSReading {
+    uint16_t vals[6];
+};
+DSReading measurements[200] = {0};
+int ds_index = 0;
+
+void distance_sensors(void *) {
+    uint16_t readings[6] = {0};
+    bool ok;
+    ADC_HandleTypeDef &hadc = hadc1;
+
+    // calibrate ADC
+    ok = HAL_ADCEx_Calibration_Start(&hadc) == HAL_OK;
+    configASSERT(ok);
+
+    vTaskDelay(pdMS_TO_TICKS(1000));
+
+
+    {
+        uint8_t led = spi::gpio::DISTANCE_SENSORS[0];
+        int time_us = 5;
+
+        auto read_next = [](int us) {
+            HAL_ADC_Start_DMA(&hadc, reinterpret_cast<uint32_t *>(measurements[ds_index++].vals), 6);
+            dummy_delay_us(us);
+            HAL_ADC_Stop_DMA(&hadc);
+        };
+
+        // initial read
+        read_next(time_us);
+
+        // turn on LED
+        spi::gpio::update_pins(led, 0);
+
+        // wait some time
+        for (int i = 0; i < 20; i++) {
+            read_next(time_us);
+        }
+
+        // turn off LED
+        spi::gpio::update_pins(0, led);
+
+        // wait some time
+        for (int i = 0; i < 50; i++) {
+            read_next(time_us);
+        }
+
+        // print CSV
+        for (int i = 0; i < ds_index; i++) {
+            uint16_t *buf = measurements[i].vals;
+            logging::printf(100, "%d,%d,%d,%d,%d,%d\n", buf[0], buf[1], buf[2], buf[3], buf[4], buf[5]);
+            vTaskDelay(5);
+        }
+    }
+
+
+    vTaskDelay(5000000);
+    while(1) {
+        for (int i = 0; i < n_elements(spi::gpio::DISTANCE_SENSORS); i++) {
+            uint8_t sensor = spi::gpio::DISTANCE_SENSORS[i];
+
+            // read the ADC
+            HAL_ADC_Start_DMA(&hadc, reinterpret_cast<uint32_t *>(readings), 6);
+            dummy_delay_us(10);
+            logging::printf(100, "%4d %4d %4d %4d %4d %4d\n",
+                    readings[0], readings[1], readings[2], readings[3], readings[4], readings[5]);
+
+            // turn on LED
+            spi::gpio::update_pins(sensor, 0);
+            dummy_delay_us(150);
+
+            // measure
+            HAL_ADC_Start_DMA(&hadc, reinterpret_cast<uint32_t *>(readings), 6);
+            dummy_delay_us(10);
+
+            // turn off LED
+            spi::gpio::update_pins(0, sensor);
+
+
+            logging::printf(100, "%4d %4d %4d %4d %4d %4d\n\n",
+                    readings[0], readings[1], readings[2], readings[3], readings[4], readings[5]);
+
+            vTaskDelay(10);
+        }
+
+        vTaskDelay(1000);
+    }
+
+    vTaskDelay(portMAX_DELAY);
 }
 
 
@@ -56,9 +187,9 @@ void set_target_position_task(void *) {
         controller.move_arc({.20, 0             }, { vel_lin, 0 }, { acc_lin, 0 });
         controller.move_arc({0,   deg2rad(-180) }, { 0, vel_ang }, { 0, acc_ang });
 
-        // spi::update_gpio_expander_pins(1 << 6, 1 << 7);
+        // spi::gpio::update_pins(spi::gpio::LED_RED, spi::gpio::LED_BLUE);
         vTaskDelay(pdMS_TO_TICKS(1500));
-        // spi::update_gpio_expander_pins(1 << 7, 1 << 6);
+        // spi::gpio::update_pins(spi::gpio::LED_BLUE, spi::gpio::LED_RED);
     }
 }
 
@@ -87,6 +218,8 @@ void run() {
             configMINIMAL_STACK_SIZE * 2, nullptr, 4, nullptr) == pdPASS;
     all_created &= xTaskCreate(logging::stats_monitor_task, "Stats",
             configMINIMAL_STACK_SIZE * 2, reinterpret_cast<void *>(pdMS_TO_TICKS(10*1000)), 1, nullptr) == pdPASS;
+    all_created &= xTaskCreate(distance_sensors, "Distance",
+            configMINIMAL_STACK_SIZE * 2, nullptr, 1, nullptr) == pdPASS;
     configASSERT(all_created);
 
     /*** Print debug memory debug information *********************************/
