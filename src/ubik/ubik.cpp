@@ -70,14 +70,9 @@ extern "C" void callback_timer_period_elapsed(TIM_HandleTypeDef *htim) {
  */
 extern "C" ADC_HandleTypeDef hadc1;
 
-struct DSReading {
-    uint16_t vals[6];
-};
-DSReading measurements[200] = {0};
-int ds_index = 0;
-
 void distance_sensors(void *) {
     uint16_t readings[6] = {0};
+    uint16_t readings_off[6] = {0};
     bool ok;
     ADC_HandleTypeDef &hadc = hadc1;
 
@@ -88,74 +83,31 @@ void distance_sensors(void *) {
     vTaskDelay(pdMS_TO_TICKS(1000));
 
 
-    {
-        uint8_t led = spi::gpio::DISTANCE_SENSORS[0];
-        int time_us = 5;
-
-        auto read_next = [](int us) {
-            HAL_ADC_Start_DMA(&hadc, reinterpret_cast<uint32_t *>(measurements[ds_index++].vals), 6);
-            dummy_delay_us(us);
-            HAL_ADC_Stop_DMA(&hadc);
-        };
-
-        // initial read
-        read_next(time_us);
-
-        // turn on LED
-        spi::gpio::update_pins(led, 0);
-
-        // wait some time
-        for (int i = 0; i < 20; i++) {
-            read_next(time_us);
-        }
-
-        // turn off LED
-        spi::gpio::update_pins(0, led);
-
-        // wait some time
-        for (int i = 0; i < 50; i++) {
-            read_next(time_us);
-        }
-
-        // print CSV
-        for (int i = 0; i < ds_index; i++) {
-            uint16_t *buf = measurements[i].vals;
-            logging::printf(100, "%d,%d,%d,%d,%d,%d\n", buf[0], buf[1], buf[2], buf[3], buf[4], buf[5]);
-            vTaskDelay(5);
-        }
-    }
-
-
-    vTaskDelay(5000000);
     while(1) {
-        for (int i = 0; i < n_elements(spi::gpio::DISTANCE_SENSORS); i++) {
-            uint8_t sensor = spi::gpio::DISTANCE_SENSORS[i];
+        // read the ADC
+        HAL_ADC_Start_DMA(&hadc, reinterpret_cast<uint32_t *>(readings_off), 6);
+        dummy_delay_us(30);
 
-            // read the ADC
-            HAL_ADC_Start_DMA(&hadc, reinterpret_cast<uint32_t *>(readings), 6);
-            dummy_delay_us(10);
-            logging::printf(100, "%4d %4d %4d %4d %4d %4d\n",
-                    readings[0], readings[1], readings[2], readings[3], readings[4], readings[5]);
+        // turn on LEDs
+        spi::gpio::update_pins(spi::gpio::DISTANCE_SENSORS_ALL(), 0);
+        dummy_delay_us(50);
 
-            // turn on LED
-            spi::gpio::update_pins(sensor, 0);
-            dummy_delay_us(150);
+        // measure
+        HAL_ADC_Start_DMA(&hadc, reinterpret_cast<uint32_t *>(readings), 6);
+        dummy_delay_us(30);
 
-            // measure
-            HAL_ADC_Start_DMA(&hadc, reinterpret_cast<uint32_t *>(readings), 6);
-            dummy_delay_us(10);
+        // turn off LEDs
+        spi::gpio::update_pins(0, spi::gpio::DISTANCE_SENSORS_ALL());
 
-            // turn off LED
-            spi::gpio::update_pins(0, sensor);
-
-
-            logging::printf(100, "%4d %4d %4d %4d %4d %4d\n\n",
-                    readings[0], readings[1], readings[2], readings[3], readings[4], readings[5]);
-
-            vTaskDelay(10);
+        for (int i = 0; i < n_elements(readings); i++) {
+            int new_val = static_cast<int>(readings[i]) - static_cast<int>(readings_off[i]);
+            readings[i] = std::max(new_val, 0);
         }
 
-        vTaskDelay(1000);
+        logging::printf(100, "%4d %4d %4d %4d %4d %4d\n\n",
+                readings[0], readings[1], readings[2], readings[3], readings[4], readings[5]);
+
+        vTaskDelay(50);
     }
 
     vTaskDelay(portMAX_DELAY);

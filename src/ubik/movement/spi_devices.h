@@ -54,6 +54,11 @@ static constexpr uint8_t LED_RED  = bit(6);
 //    GPIOEX:  0  1  2  3  4  5
 //        DS:  3  2  1  0  4  5  (0-indexed)
 static constexpr uint8_t DISTANCE_SENSORS[] = {bit(3), bit(2), bit(1), bit(0), bit(4), bit(5)};
+static constexpr uint8_t DISTANCE_SENSORS_ALL() {
+    uint8_t bits = 0x00;
+    for (uint8_t b: DISTANCE_SENSORS) bits |= b;
+    return bits;
+}
 
 } // namespace gpio
 
