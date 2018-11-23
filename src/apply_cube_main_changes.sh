@@ -29,6 +29,8 @@ replace_in_file() {
     sed -ie "/$star_pattern/,/$end_pattern/c\ $replacement" "$file"
 }
 
+################################################################################
+
 # replace USER CODE Init with this (to disable systick)
 replacement=$(cat << EOF
   /* USER CODE BEGIN SysInit */
@@ -47,3 +49,18 @@ EOF
 )
 
 replace_in_file "$main_path" 'USER CODE BEGIN SysInit' 'USER CODE END SysInit' "$replacement"
+
+################################################################################
+
+# replace USER CODE Init with this (to disable systick)
+replacement=$(cat << EOF
+  /* USER CODE BEGIN Callback 1 */
+
+  extern void callback_timer_period_elapsed(TIM_HandleTypeDef *htim);
+  callback_timer_period_elapsed(htim);
+
+  /* USER CODE END Callback 1 */
+EOF
+)
+
+replace_in_file "$main_path" 'USER CODE BEGIN Callback 1' 'USER CODE END Callback 1' "$replacement"

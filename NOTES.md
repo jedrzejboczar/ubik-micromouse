@@ -23,9 +23,20 @@ How to use them here:
     no prescaler
     this gives fpwm = fclk / (period+1) = 72e6 / 7.2e3 = 10e3 -> 10kHz
 
+- TIM2 - again for microsecond non-blocking delays for distance sensors measurements
+
 # SPI (encoders + gpio-expander)
 
 SPI has no DMA available.
 - reading 3 bytes with HAL_SPI_Receive() takes about 51 us
 - reading 3 bytes with a simple implementation on registers takes about 44 us
 - reading 3 bytes with HAL_SPI_Receive_IT() takes about 51 us, but have about 18 us of time for other things
+
+
+# DMA Channels
+
+- DMA1 Channel1 - ADC1      - distance sensor measurements - medium priority
+- DMA1 Channel4 - USART1 TX - logging TX                   - low priority
+- DMA1 Channel5 - USART1 RX - logging RX                   - low priority
+- DMA1 Channel6 - I2C1 TX   - IMU TX                       - high priority, because of I2C1-TIM3 conflict
+- DMA1 Channel7 - I2C1 RX   - IMU RX                       - high priority, because of I2C1-TIM3 conflict

@@ -8,104 +8,50 @@
 #include "ubik/logging/stats.h"
 
 #include "movement/controller.h"
+#include "distance_sensors.h"
 
 
 void run();
 extern "C" void extern_main(void) { run(); }
 
-void dummy_delay_us(uint32_t micros) {
-    cycles_counter::reset();
-    cycles_counter::start();
-    while (cycles_counter::get_us() < micros) {  }
-    cycles_counter::stop();
-}
-
-extern "C" TIM_HandleTypeDef htim4;
-extern "C" void callback_timer_period_elapsed(TIM_HandleTypeDef *htim) {
-    if (htim->Instance == htim4.Instance) {
-        // // read encoders
-        // spi::EncoderReadings readings = spi::read_encoders();
-        // if (readings.valid && readings.left.is_ok() && readings.right.is_ok()) {
-        //     current = readings;
-        //     angle_left = readings.left.angle;
-        //     angle_right = readings.right.angle;
-        // }
-
-        // get next PID output
-        // set motors pulse
-    }
-}
+// extern "C" TIM_HandleTypeDef htim4;
+// extern "C" void callback_timer_period_elapsed(TIM_HandleTypeDef *htim) {
+//     if (htim->Instance == htim4.Instance) {
+//         // // read encoders
+//         // spi::EncoderReadings readings = spi::read_encoders();
+//         // if (readings.valid && readings.left.is_ok() && readings.right.is_ok()) {
+//         //     current = readings;
+//         //     angle_left = readings.left.angle;
+//         //     angle_right = readings.right.angle;
+//         // }
+//
+//         // get next PID output
+//         // set motors pulse
+//     }
+// }
 
 
-/*
- * ADC1, fclk = 9MHz
- * single conversion: Ts = (12.5 + 28.5) * 1/fclk ~= 4.556 us
- * 6 conversions: T6 = 27.333 us
- * DMA: periph(no-inc)->memory(inc), not-circular, half-word
- *
- * Numeration:
- * - in schematics:
- *                   Front
- *          _______________________
- *  Left   /      o         o      \   Right
- *        /      /           \      \
- *       /      /             \      \
- *      |       DS4         DS3      |
- *      |  o                      o  |
- *      |  |                      |  |
- *      |   DS5               DS2    |
- *      |                            |
- *      | o-- DS6            DS1 --o |
- *      |                            |
- *
- * - sensor to ADC1 channel mapping: DS(N) -> CH(N-1)
- * - in code we use 0-indexing: DS(N) -> DS(N-1)
- * Conversion regular channels order: 0,1,2,3,4,5
- *   (instead of the old_ubik's 0,2,4,1,3,5 that was using discontinuous conversions)
- *
- * Gpio expander used for turning LEDs on/off:
- *    LEDS are connected in different order than in pcb/plots/ubik.pdf TODO: update this pdf
- *    they are actually connected in the order: GPIOEX 0-5 --> DS 4,3,2,1,5,6
- *
- */
-extern "C" ADC_HandleTypeDef hadc1;
-
-void distance_sensors(void *) {
-    uint16_t readings[6] = {0};
-    uint16_t readings_off[6] = {0};
-    bool ok;
-    ADC_HandleTypeDef &hadc = hadc1;
-
-    // calibrate ADC
-    ok = HAL_ADCEx_Calibration_Start(&hadc) == HAL_OK;
-    configASSERT(ok);
-
+void distance_sensors_task(void *) {
     vTaskDelay(pdMS_TO_TICKS(1000));
 
-
     while(1) {
-        // read the ADC
-        HAL_ADC_Start_DMA(&hadc, reinterpret_cast<uint32_t *>(readings_off), 6);
-        dummy_delay_us(30);
-
-        // turn on LEDs
-        spi::gpio::update_pins(spi::gpio::DISTANCE_SENSORS_ALL(), 0);
-        dummy_delay_us(50);
-
-        // measure
-        HAL_ADC_Start_DMA(&hadc, reinterpret_cast<uint32_t *>(readings), 6);
-        dummy_delay_us(30);
-
-        // turn off LEDs
-        spi::gpio::update_pins(0, spi::gpio::DISTANCE_SENSORS_ALL());
-
-        for (int i = 0; i < n_elements(readings); i++) {
-            int new_val = static_cast<int>(readings[i]) - static_cast<int>(readings_off[i]);
-            readings[i] = std::max(new_val, 0);
-        }
+#if 0
+        auto readings = distance_sensors::read(spi::gpio::DISTANCE_SENSORS_ALL());
+#else
+        auto readings = distance_sensors::read(
+                spi::gpio::DISTANCE_SENSORS[0] |
+                spi::gpio::DISTANCE_SENSORS[1] |
+                spi::gpio::DISTANCE_SENSORS[4] |
+                spi::gpio::DISTANCE_SENSORS[5]);
+#endif
 
         logging::printf(100, "%4d %4d %4d %4d %4d %4d\n\n",
-                readings[0], readings[1], readings[2], readings[3], readings[4], readings[5]);
+                readings.sensor[0],
+                readings.sensor[1],
+                readings.sensor[2],
+                readings.sensor[3],
+                readings.sensor[4],
+                readings.sensor[5]);
 
         vTaskDelay(50);
     }
@@ -152,6 +98,7 @@ void run() {
     /*** Initialize modules ***************************************************/
 
     spi::initialise(); // encoders & gpio expander
+    distance_sensors::initialise(); // encoders & gpio expander
     movement::motors::initialise(); // motor control
     movement::regulator::initialise(); // PID regulator
 
@@ -170,7 +117,7 @@ void run() {
             configMINIMAL_STACK_SIZE * 2, nullptr, 4, nullptr) == pdPASS;
     all_created &= xTaskCreate(logging::stats_monitor_task, "Stats",
             configMINIMAL_STACK_SIZE * 2, reinterpret_cast<void *>(pdMS_TO_TICKS(10*1000)), 1, nullptr) == pdPASS;
-    all_created &= xTaskCreate(distance_sensors, "Distance",
+    all_created &= xTaskCreate(distance_sensors_task, "Distance",
             configMINIMAL_STACK_SIZE * 2, nullptr, 1, nullptr) == pdPASS;
     configASSERT(all_created);
 

@@ -6,7 +6,7 @@
   ******************************************************************************
   ** This notice applies to any and all portions of this file
   * that are not between comment pairs USER CODE BEGIN and
-  * USER CODE END. Other portions of this file, whether 
+  * USER CODE END. Other portions of this file, whether
   * inserted by the user or by software development tools
   * are owned by their respective copyright owners.
   *
@@ -82,7 +82,7 @@ static void MX_I2C1_Init(void);
 static void MX_TIM4_Init(void);
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
-                                
+
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
@@ -176,7 +176,7 @@ void SystemClock_Config(void)
   RCC_ClkInitTypeDef RCC_ClkInitStruct;
   RCC_PeriphCLKInitTypeDef PeriphClkInit;
 
-    /**Initializes the CPU, AHB and APB busses clocks 
+    /**Initializes the CPU, AHB and APB busses clocks
     */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
@@ -190,7 +190,7 @@ void SystemClock_Config(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
-    /**Initializes the CPU, AHB and APB busses clocks 
+    /**Initializes the CPU, AHB and APB busses clocks
     */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
@@ -211,11 +211,11 @@ void SystemClock_Config(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
-    /**Configure the Systick interrupt time 
+    /**Configure the Systick interrupt time
     */
   HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
 
-    /**Configure the Systick 
+    /**Configure the Systick
     */
   HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
 
@@ -229,7 +229,7 @@ static void MX_ADC1_Init(void)
 
   ADC_ChannelConfTypeDef sConfig;
 
-    /**Common config 
+    /**Common config
     */
   hadc1.Instance = ADC1;
   hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
@@ -243,7 +243,7 @@ static void MX_ADC1_Init(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
-    /**Configure Regular Channel 
+    /**Configure Regular Channel
     */
   sConfig.Channel = ADC_CHANNEL_0;
   sConfig.Rank = ADC_REGULAR_RANK_1;
@@ -253,7 +253,7 @@ static void MX_ADC1_Init(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
-    /**Configure Regular Channel 
+    /**Configure Regular Channel
     */
   sConfig.Channel = ADC_CHANNEL_1;
   sConfig.Rank = ADC_REGULAR_RANK_2;
@@ -262,7 +262,7 @@ static void MX_ADC1_Init(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
-    /**Configure Regular Channel 
+    /**Configure Regular Channel
     */
   sConfig.Channel = ADC_CHANNEL_2;
   sConfig.Rank = ADC_REGULAR_RANK_3;
@@ -271,7 +271,7 @@ static void MX_ADC1_Init(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
-    /**Configure Regular Channel 
+    /**Configure Regular Channel
     */
   sConfig.Channel = ADC_CHANNEL_3;
   sConfig.Rank = ADC_REGULAR_RANK_4;
@@ -280,7 +280,7 @@ static void MX_ADC1_Init(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
-    /**Configure Regular Channel 
+    /**Configure Regular Channel
     */
   sConfig.Channel = ADC_CHANNEL_4;
   sConfig.Rank = ADC_REGULAR_RANK_5;
@@ -289,7 +289,7 @@ static void MX_ADC1_Init(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
-    /**Configure Regular Channel 
+    /**Configure Regular Channel
     */
   sConfig.Channel = ADC_CHANNEL_5;
   sConfig.Rank = ADC_REGULAR_RANK_6;
@@ -307,7 +307,7 @@ static void MX_ADC2_Init(void)
   ADC_ChannelConfTypeDef sConfig;
   ADC_InjectionConfTypeDef sConfigInjected;
 
-    /**Common config 
+    /**Common config
     */
   hadc2.Instance = ADC2;
   hadc2.Init.ScanConvMode = ADC_SCAN_ENABLE;
@@ -322,7 +322,7 @@ static void MX_ADC2_Init(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
-    /**Configure Regular Channel 
+    /**Configure Regular Channel
     */
   sConfig.Channel = ADC_CHANNEL_6;
   sConfig.Rank = ADC_REGULAR_RANK_1;
@@ -332,7 +332,7 @@ static void MX_ADC2_Init(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
-    /**Configure Regular Channel 
+    /**Configure Regular Channel
     */
   sConfig.Channel = ADC_CHANNEL_7;
   sConfig.Rank = ADC_REGULAR_RANK_2;
@@ -341,7 +341,7 @@ static void MX_ADC2_Init(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
-    /**Configure Injected Channel 
+    /**Configure Injected Channel
     */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_8;
   sConfigInjected.InjectedRank = ADC_INJECTED_RANK_1;
@@ -410,7 +410,7 @@ static void MX_TIM2_Init(void)
   TIM_MasterConfigTypeDef sMasterConfig;
 
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 71;
+  htim2.Init.Prescaler = 72 - 1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim2.Init.Period = 0;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -530,36 +530,36 @@ static void MX_USART1_UART_Init(void)
 
 }
 
-/** 
+/**
   * Enable DMA controller clock
   */
-static void MX_DMA_Init(void) 
+static void MX_DMA_Init(void)
 {
   /* DMA controller clock enable */
   __HAL_RCC_DMA1_CLK_ENABLE();
 
   /* DMA interrupt init */
   /* DMA1_Channel1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 7, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
   /* DMA1_Channel4_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 10, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 9, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
   /* DMA1_Channel5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 10, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 9, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
   /* DMA1_Channel6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 9, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 6, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
   /* DMA1_Channel7_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel7_IRQn, 9, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel7_IRQn, 6, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel7_IRQn);
 
 }
 
-/** Configure pins as 
-        * Analog 
-        * Input 
+/** Configure pins as
+        * Analog
+        * Input
         * Output
         * EVENT_OUT
         * EXTI
@@ -579,7 +579,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(LS_Power_GPIO_Port, LS_Power_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, LS_Adr0_Pin|LS_Adr1_Pin|LS_Adr2_Pin|MOT1_Dir2_Pin 
+  HAL_GPIO_WritePin(GPIOB, LS_Adr0_Pin|LS_Adr1_Pin|LS_Adr2_Pin|MOT1_Dir2_Pin
                           |MOT2_Dir2_Pin|MOT2_Dir1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
@@ -604,9 +604,9 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LS_Adr0_Pin LS_Adr1_Pin LS_Adr2_Pin ENC1_Cs_Pin 
+  /*Configure GPIO pins : LS_Adr0_Pin LS_Adr1_Pin LS_Adr2_Pin ENC1_Cs_Pin
                            MOT1_Dir2_Pin MOT2_Dir2_Pin MOT2_Dir1_Pin */
-  GPIO_InitStruct.Pin = LS_Adr0_Pin|LS_Adr1_Pin|LS_Adr2_Pin|ENC1_Cs_Pin 
+  GPIO_InitStruct.Pin = LS_Adr0_Pin|LS_Adr1_Pin|LS_Adr2_Pin|ENC1_Cs_Pin
                           |MOT1_Dir2_Pin|MOT2_Dir2_Pin|MOT2_Dir1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -662,7 +662,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   if (htim->Instance == TIM1) {
     HAL_IncTick();
   }
-  /* USER CODE BEGIN Callback 1 */
+   /* USER CODE BEGIN Callback 1 */
+
   extern void callback_timer_period_elapsed(TIM_HandleTypeDef *htim);
   callback_timer_period_elapsed(htim);
 
@@ -694,7 +695,7 @@ void _Error_Handler(char *file, int line)
   * @retval None
   */
 void assert_failed(uint8_t* file, uint32_t line)
-{ 
+{
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
      tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */

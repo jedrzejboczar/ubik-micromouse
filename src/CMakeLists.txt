@@ -1,6 +1,6 @@
-message("Applying fix [main.c]: disabe SysTick to prevent early FreeRTOS context switch.")
+message("Applying changes to Cube generated main.c")
 execute_process(COMMAND
-    sh "${CMAKE_CURRENT_SOURCE_DIR}/fix_systick.sh"
+    sh "${CMAKE_CURRENT_SOURCE_DIR}/apply_cube_main_changes.sh"
     )
 
 target_include_directories(${CMAKE_PROJECT_NAME}
