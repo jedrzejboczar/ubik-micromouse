@@ -13,7 +13,7 @@
 // we use the HAL "system timer"
 // HAL configures the timer's prescaler for 1MHz clock
 // and tick for 1kHz.
-// FreeRTOS holds its time in uint32 so it will work for:
+// FreeRTOS holds it's time in uint32 so it will work for:
 // Unit  | Max time
 // 1ms   | ~7 weeks
 // 100us | ~5 days

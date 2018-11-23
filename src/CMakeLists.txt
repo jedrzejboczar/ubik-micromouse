@@ -9,5 +9,6 @@ target_include_directories(${CMAKE_PROJECT_NAME}
 add_subdirectory(cube)
 add_subdirectory(freeRTOS)
 add_subdirectory(freeRTOS_cpp)
+add_subdirectory(mpaland_printf)
 add_subdirectory(ubik)
 

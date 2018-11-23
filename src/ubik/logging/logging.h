@@ -1,6 +1,8 @@
 #pragma once
 
-#include <cstdio>
+// use mpaland's minimal implementation (for floating point) instead of <cstdio>
+#include <printf.h>
+
 #include "buffer.h"
 
 namespace logging {

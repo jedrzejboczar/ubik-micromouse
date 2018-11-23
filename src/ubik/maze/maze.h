@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <cstring>
 #include <cmath>
-#include <cassert>
+// #include <cassert> TODO: change assert() to configASSERT
 #include <limits>
 #include <algorithm>
 

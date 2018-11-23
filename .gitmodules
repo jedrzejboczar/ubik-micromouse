@@ -1,3 +1,6 @@
 [submodule "cmake/stm32-cmake"]
 	path = cmake/stm32-cmake
 	url = https://github.com/ObKo/stm32-cmake.git
+[submodule "src/mpaland_printf/printf"]
+	path = src/mpaland_printf/printf
+	url = git@github.com:mpaland/printf.git

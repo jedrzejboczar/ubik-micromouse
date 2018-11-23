@@ -1,7 +1,6 @@
 #include "motor_control.h"
 
 #include <algorithm>
-#include <cassert>
 
 #include "stm32f1xx.h"
 
@@ -50,13 +49,14 @@ int max_pulse() {
 void initialise() {
     static bool initialised = false;
     if (initialised) return;
-    initialised = true;
 
     HAL_StatusTypeDef result;
 	result = HAL_TIM_PWM_Start(&motors_timer, left_tim_channel);
-    assert(result == HAL_OK);
+    configASSERT(result == HAL_OK);
 	result = HAL_TIM_PWM_Start(&motors_timer, right_tim_channel);
-    assert(result == HAL_OK);
+    configASSERT(result == HAL_OK);
+
+    initialised = true;
 }
 
 void set_enabled(bool enabled) {
