@@ -22,6 +22,7 @@ static_assert(LOOP_PERIOD_MS > N_BUTTON_MEASUREMENTS * TIME_BETWEEN_MEASUREMENTS
 
 static bool check_button();
 static float adc2voltage(float adc_reading);
+static float adc2current(float adc_reading);
 
 
 void system_monitor_task(void *) {
@@ -90,7 +91,7 @@ void system_monitor_task(void *) {
         // conversion time is about 28us, so we'll just wait for now, we have time
         HAL_ADC_Start(&hadc);
         vTaskDelay(pdMS_TO_TICKS(1)); // wait MUCH too long for conversion
-        HAL_ADC_GetValue(&hadc); // ignore current measurements
+        int current = HAL_ADC_GetValue(&hadc); // ignore current measurements
         HAL_ADC_Start(&hadc);
         vTaskDelay(pdMS_TO_TICKS(1)); // wait MUCH too long for conversion
         int voltage = HAL_ADC_GetValue(&hadc);
@@ -122,6 +123,16 @@ void system_monitor_task(void *) {
         // change the current regulation state if needed
         set_regulation_state();
 
+        if constexpr (PRINT_BATTERY_MEASUREMENTS_EVERY > 0) {
+            static uint32_t counter = 0;
+            if (counter++ >= PRINT_BATTERY_MEASUREMENTS_EVERY - 1) {
+                counter = 0;
+                logging::printf(80, "Voltage level: %.3f V   Current level: %.3f\n",
+                        static_cast<double>(last_voltage), static_cast<double>(adc2current(current)));
+            }
+
+        }
+
         vTaskDelayUntil(&last_start, pdMS_TO_TICKS(LOOP_PERIOD_MS));
     }
 }
@@ -135,5 +146,9 @@ float adc2voltage(float adc_reading) {
     return adc_reading / MAX_ADC_READING * VCC * (1 / VOLTAGE_RESISTOR_DIVIDER);
 }
 
+float adc2current(float adc_reading) {
+    float voltage = adc_reading / MAX_ADC_READING * VCC * CURRENT_READING_GAIN;
+    return voltage / CURRENT_MEASUREMENT_RESISTOR;
+}
 
 

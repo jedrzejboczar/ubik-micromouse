@@ -8,23 +8,32 @@
 static constexpr float LOOP_FREQ_HZ = 10;
 static constexpr float VOLTAGE_WARINGS_FREQ_HZ = 1;
 
+
+
 // button
 static constexpr bool REGULATION_START_ON = true; // state in which to start robot
+
 // button debouncing
 static constexpr int N_BUTTON_MEASUREMENTS = 10; // how many samples to take
 static constexpr int MIN_BUTTON_ON_COUNT = 6; // how many samples are needed to register button press
 static constexpr int TIME_BETWEEN_MEASUREMENTS_MS = 8; // time between subsequent samples
 static constexpr int MIN_BUTTON_DELAY_MS = 500; // minimum delay between subsequent button presses
 
-// voltage measurements
+
+// voltage & current measurements
 constexpr bool IS_BATTERY_SUPPLY = false;
+constexpr int PRINT_BATTERY_MEASUREMENTS_EVERY = 0 /* 30 */; // every that many loops
 constexpr float MAX_ADC_READING = ((1 << 12) - 1);
-constexpr float VOLTAGE_RESISTOR_DIVIDER = 10.0 / 32.0;
 constexpr float VCC = 3.3;
+constexpr float VOLTAGE_RESISTOR_DIVIDER = 10.0 / 32.0;
+constexpr float CURRENT_READING_GAIN = 11;
+constexpr float CURRENT_MEASUREMENT_RESISTOR = 0.1;
+
 // li-pol battery constants
 constexpr int N_LIPOL_CELLS = 2;
 constexpr float CRITICAL_VOLTAGE = 3.1 * N_LIPOL_CELLS;
 constexpr float WARING_VOLTAGE = 3.4 * N_LIPOL_CELLS;
+
 // IIR filter coefficients
 // in fact this variation of: y = a*x + (1-a)*y,
 // but rather: y[n] = b/2 * x[n] + b/2 * x[n-1] + a*y[n-1]
