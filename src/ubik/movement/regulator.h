@@ -35,4 +35,11 @@ void update_target_by(float translation_meters, float rotation_radians);
 
 
 } // namespace regulator
+
+
+// regulator.cpp implements movement::update_target_by()
+// this is to interface with controller.h, the function just calls
+// movement::regulator::update_target_by()
+
+
 } // namespace movement

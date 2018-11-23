@@ -7,6 +7,7 @@
 #include "ubik/logging/logging.h"
 #include "ubik/logging/stats.h"
 
+#include "movement/regulator.h"
 #include "movement/controller.h"
 #include "distance_sensors.h"
 

@@ -7,6 +7,13 @@
 
 
 namespace movement {
+
+// this is implemented to interface with controller.h
+void update_target_by(float distance_linear, float distance_angular) {
+    regulator::update_target_by(distance_linear, distance_angular);
+}
+
+
 namespace regulator {
 
 static constexpr int32_t MAX_ENCODER_READING = (1 << 12) - 1;
