@@ -2,17 +2,7 @@
 
 namespace movement {
 
-/*
- * Moves robot along an arc described by the distance.
- * Movement is restricted by the acceleration, desired velocity and final velocity.
- * All arguments are taken by their absolute value, only the distance's sign determines
- * movement direction.
- * Each Vec2 consists of linear and angular coordinate.
- * Units are from SI table, so:
- *    linear units: meter, meter/s, ...
- *    angular units: radian, radian/s, ...
- *    angular direction is positive when robot turns left
- */
+
 void Controller::move_arc(Vec2 distance, Vec2 vel_desired, Vec2 acc, Vec2 vel_final) {
     int direction_lin = distance.lin > 0 ? 1 : -1;
     int direction_ang = distance.ang > 0 ? 1 : -1;
@@ -115,5 +105,30 @@ void Controller::move_arc(Vec2 distance, Vec2 vel_desired, Vec2 acc, Vec2 vel_fi
     if (vel_current.ang > vel_final.ang)
         vel_current.ang = vel_final.ang;
 }
+
+bool Controller::should_be_breaking(float dist_remaining, float vel_current, float vel_final, float acc)  {
+    float dist_required = (vel_current + vel_final) * (vel_current - vel_final) / (2 * acc);
+    return dist_remaining <= dist_required;
+}
+
+float Controller::required_breaking_acc(float dist_remaining, float vel_current, float vel_final)  {
+    float acc = (vel_current + vel_final) * (vel_current - vel_final) / (2 * dist_remaining);
+    return acc;
+}
+
+float Controller::update_velocity(float vel_current, float vel_desired, float acc) {
+    if (vel_current < vel_desired) {
+        vel_current += acc * dt;
+        vel_current = std::min(vel_current, vel_desired); // remove overshoot
+    } else if (vel_current > vel_desired) {
+        vel_current -= acc * dt;
+        vel_current = std::max(vel_current, vel_desired); // remove overshoot
+    }
+    return vel_current;
+}
+
+
+
+
 
 } // namespace movement

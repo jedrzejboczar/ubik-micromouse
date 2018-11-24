@@ -72,14 +72,8 @@ public:
      * For the required breaking acceleration it is just:
      *    a = (vc + vf)(vc - vf) / 2s
      */
-    bool should_be_breaking(float dist_remaining, float vel_current, float vel_final, float acc)  {
-        float dist_required = (vel_current + vel_final) * (vel_current - vel_final) / (2 * acc);
-        return dist_remaining <= dist_required;
-    }
-    float required_breaking_acc(float dist_remaining, float vel_current, float vel_final)  {
-        float acc = (vel_current + vel_final) * (vel_current - vel_final) / (2 * dist_remaining);
-        return acc;
-    }
+    bool should_be_breaking(float dist_remaining, float vel_current, float vel_final, float acc);
+    float required_breaking_acc(float dist_remaining, float vel_current, float vel_final);
 
     /*
      * Adjust `vel_current` to obtaing desired trapezoidal shape,
@@ -91,18 +85,11 @@ public:
      *     | vel_initial__ ____/
      *     +---------------------------------------------------->
      *                              time
+     *
+     * Theoretically, the integration should be ideal, as we use only
+     * constant accelerations anyway.
      */
-    // the integration should be ideal, as we use only constant accelerations
-    float update_velocity(float vel_current, float vel_desired, float acc) {
-        if (vel_current < vel_desired) {
-            vel_current += acc * dt;
-            vel_current = std::min(vel_current, vel_desired); // remove overshoot
-        } else if (vel_current > vel_desired) {
-            vel_current -= acc * dt;
-            vel_current = std::max(vel_current, vel_desired); // remove overshoot
-        }
-        return vel_current;
-    }
+    float update_velocity(float vel_current, float vel_desired, float acc);
 };
 
 
