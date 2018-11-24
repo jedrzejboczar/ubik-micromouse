@@ -52,6 +52,11 @@ public:
      * at the beggining of the movement is so big, that `vel final` cannot be reached
      * at the given `acc`.
      *
+     * These functions assume (and set) current velocity of opposite movement to be zero,
+     * e.g. calling move_line() resets `vel_current.ang` to zero, so that it can be
+     * used after move_arc() and won't result in rong behaviour.
+     * If current velocity is non-zero, use proper functions to reduce it before.
+     *
      * All values are in SI system (meters, radians, meters/s, etc.).
      * Positive angle means turning left (as a directed angle in XY coordinate
      * system).

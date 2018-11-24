@@ -3,9 +3,11 @@
 namespace movement {
 
 void Controller::move_line(float distance, float vel_desired, float acc, float vel_final) {
+    vel_current.ang = 0;
     move_lin_ang({distance, 0}, {vel_desired, 0}, {acc, 0}, {vel_final, 0});
 }
 void Controller::move_rotate(float angle, float vel_desired, float acc, float vel_final) {
+    vel_current.lin = 0;
     move_lin_ang({0, angle}, {0, vel_desired}, {0, acc}, {0, vel_final});
 }
 

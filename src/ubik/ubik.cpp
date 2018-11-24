@@ -16,22 +16,6 @@
 void run();
 extern "C" void extern_main(void) { run(); }
 
-// extern "C" TIM_HandleTypeDef htim4;
-// extern "C" void callback_timer_period_elapsed(TIM_HandleTypeDef *htim) {
-//     if (htim->Instance == htim4.Instance) {
-//         // // read encoders
-//         // spi::EncoderReadings readings = spi::read_encoders();
-//         // if (readings.valid && readings.left.is_ok() && readings.right.is_ok()) {
-//         //     current = readings;
-//         //     angle_left = readings.left.angle;
-//         //     angle_right = readings.right.angle;
-//         // }
-//
-//         // get next PID output
-//         // set motors pulse
-//     }
-// }
-
 
 void distance_sensors_task(void *) {
     vTaskDelay(pdMS_TO_TICKS(300));
@@ -68,32 +52,59 @@ void set_target_position_task(void *) {
     using constants::deg2rad;
     movement::Controller c(100);
 
-    float vel_lin = 0.50;
-    float acc_lin = 0.40;
-    float vel_ang = deg2rad(300);
-    float acc_ang = deg2rad(400);
+    float vel_lin = 0.3;
+    float acc_lin = 0.15;
+    // float vel_ang = deg2rad(300);
+    // float acc_ang = deg2rad(400);
 
+    vTaskDelay(pdMS_TO_TICKS(500));
     while (1) {
         logging::printf(50, "Next cycle\n");
 
-        using movement::Vec2;
 
-        // move on an equilateral traingle with a=10cm
-        float a = 0.15;
-        float R = 0.577f * a;
-
-        c.move_line(a, vel_lin, acc_lin);
-        c.move_rotate(deg2rad(120), vel_ang, acc_ang);
-        c.move_line(a, vel_lin, acc_lin, 0);
+        // // move on an equilateral traingle with a=10cm
+        // float a = 0.15;
+        // float R = 0.577f * a;
+        //
+        // c.move_line(a, vel_lin, acc_lin);
         // c.move_rotate(deg2rad(120), vel_ang, acc_ang);
         // c.move_line(a, vel_lin, acc_lin, 0);
-        // c.move_rotate(deg2rad(120), vel_ang, acc_ang);
+        // // c.move_rotate(deg2rad(120), vel_ang, acc_ang);
+        // // c.move_line(a, vel_lin, acc_lin, 0);
+        // // c.move_rotate(deg2rad(120), vel_ang, acc_ang);
+        //
+        // // move on the circle circumscribing the triangle
+        // c.move_rotate(deg2rad(60), vel_ang, acc_ang);
+        // c.move_arc({deg2rad(120) * R, deg2rad(120)}, vel_lin, acc_lin);
+        // // turn back
+        // c.move_rotate(deg2rad(-180 - 120), vel_ang, acc_ang);
 
-        // move on the circle circumscribing the triangle
-        c.move_rotate(deg2rad(60), vel_ang, acc_ang);
-        c.move_arc({deg2rad(120) * R, deg2rad(120)}, vel_lin, acc_lin);
-        // turn back
-        c.move_rotate(deg2rad(-180 - 120), vel_ang, acc_ang);
+
+        // // move in an eight
+        // float R = 0.08;
+        // float angle = deg2rad(270);
+        // float arc_len = constants::arc_length(angle, R);
+        // int N = 2;
+        // float vel_final = 0.3f * vel_lin;
+        // // get initial speed
+        // c.move_line(R, vel_lin, acc_lin, vel_final);
+        // for (int i = 0; i < N; i++) {
+        //     c.move_arc({arc_len, -angle}, vel_lin, acc_lin, vel_final);
+        //     c.move_line(2 * R, vel_lin, acc_lin, vel_final);
+        //     c.move_arc({arc_len, angle}, vel_lin, acc_lin, vel_final);
+        //     if (i < N - 1)
+        //         c.move_line(2 * R, vel_lin, acc_lin, vel_final);
+        //     else
+        //         c.move_line(R, vel_lin, acc_lin, 0);
+        // }
+
+        // move in circle
+        float R = 0.15;
+        float angle = deg2rad(360);
+        float arc_len = constants::arc_length(angle, R);
+        c.move_arc({2*arc_len, 2*angle}, vel_lin, acc_lin);
+        c.move_arc({-2*arc_len, -2*angle}, vel_lin, acc_lin); // unwind the cables xD
+
 
         spi::gpio::update_pins(spi::gpio::LED_RED, spi::gpio::LED_BLUE);
         vTaskDelay(pdMS_TO_TICKS(1500));

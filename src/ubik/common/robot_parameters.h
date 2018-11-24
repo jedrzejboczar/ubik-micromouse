@@ -23,12 +23,13 @@ static inline float rad2deg(float rad) {
     return rad / PI * 180;
 }
 
-// rotation (both wheels) by PI (180 deg) means that single wheel moves by half
-// the circumference of a circle of diameter equal to the distance between wheels
-// also, length of an arc: l = theta * R
+static inline float arc_length(float angle, float radius) {
+    return angle * radius;
+}
+
+
 static inline float rotation_angle2arc_length(float angle) {
-    // return angle / (2*PI) * TURN_CIRCUMFERENCE; // equivalent to:
-    return angle * TURN_RADIUS;
+    return arc_length(angle, TURN_RADIUS);
 }
 static inline float arc_length2rotation_angle(float arc_length) {
     return arc_length / TURN_RADIUS;
