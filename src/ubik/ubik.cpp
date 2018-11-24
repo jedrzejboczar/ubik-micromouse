@@ -65,7 +65,7 @@ void movement::Controller::delay(float dt) {
 
 void set_target_position_task(void *) {
     using constants::deg2rad;
-    movement::Controller controller(100);
+    movement::Controller c(100);
 
     float vel_lin = 0.50;
     float acc_lin = 0.40;
@@ -76,13 +76,23 @@ void set_target_position_task(void *) {
         logging::printf(50, "Next cycle\n");
 
         using movement::Vec2;
-        controller.move_arc({0,   deg2rad(45)   }, { 0, vel_ang }, { 0, acc_ang });
-        controller.move_arc({0,   deg2rad(-90)  }, { 0, vel_ang }, { 0, acc_ang });
-        controller.move_arc({0,   deg2rad(45)   }, { 0, vel_ang }, { 0, acc_ang });
-        controller.move_arc({.20, 0             }, { vel_lin, 0 }, { acc_lin, 0 });
-        controller.move_arc({0,   deg2rad(180)  }, { 0, vel_ang }, { 0, acc_ang });
-        controller.move_arc({.20, 0             }, { vel_lin, 0 }, { acc_lin, 0 });
-        controller.move_arc({0,   deg2rad(-180) }, { 0, vel_ang }, { 0, acc_ang });
+
+        // move on an equilateral traingle with a=10cm
+        float a = 0.15;
+        float R = 0.577f * a;
+
+        c.move_line(a, vel_lin, acc_lin);
+        c.move_rotate(deg2rad(120), vel_ang, acc_ang);
+        c.move_line(a, vel_lin, acc_lin, 0);
+        // c.move_rotate(deg2rad(120), vel_ang, acc_ang);
+        // c.move_line(a, vel_lin, acc_lin, 0);
+        // c.move_rotate(deg2rad(120), vel_ang, acc_ang);
+
+        // move on the circle circumscribing the triangle
+        c.move_rotate(deg2rad(60), vel_ang, acc_ang);
+        c.move_arc({deg2rad(120) * R, deg2rad(120)}, vel_lin, acc_lin);
+        // turn back
+        c.move_rotate(deg2rad(-180 - 120), vel_ang, acc_ang);
 
         spi::gpio::update_pins(spi::gpio::LED_RED, spi::gpio::LED_BLUE);
         vTaskDelay(pdMS_TO_TICKS(1500));

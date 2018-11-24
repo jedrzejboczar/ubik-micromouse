@@ -2,8 +2,100 @@
 
 namespace movement {
 
+void Controller::move_line(float distance, float vel_desired, float acc, float vel_final) {
+    move_lin_ang({distance, 0}, {vel_desired, 0}, {acc, 0}, {vel_final, 0});
+}
+void Controller::move_rotate(float angle, float vel_desired, float acc, float vel_final) {
+    move_lin_ang({0, angle}, {0, vel_desired}, {0, acc}, {0, vel_final});
+}
 
-void Controller::move_arc(Vec2 distance, Vec2 vel_desired, Vec2 acc, Vec2 vel_final) {
+void Controller::move_arc(Vec2 distance, float vel_desired, float acc, float vel_final) {
+    int direction_lin = distance.lin > 0 ? 1 : -1;
+    int direction_ang = distance.ang > 0 ? 1 : -1;
+
+    // use only absolute values, direction only affects the resulting velocities sign
+    distance = abs(distance);
+    vel_desired = std::abs(vel_desired);
+    acc = std::abs(acc);
+    vel_final = std::abs(vel_final);
+
+#if DEBUG_STORE_VEL_DESIRED_AND_ACC == 1
+    this->vel_desired.lin = vel_desired;
+    this->acc.lin = acc;
+#endif
+
+    // calculate the curvature of this arc, once as it is constant
+    const float k = distance.ang / distance.lin;
+
+    // save the remaining distance to a member variable
+    dist_remaining.lin = distance.lin;
+    bool is_breaking = false;
+
+    while ( dist_remaining.lin > 0 )
+    {
+
+        // if we have to start breaking, set the desired velocity to the final one
+        if (!is_breaking && should_be_breaking(
+                    dist_remaining.lin, vel_current.lin, vel_final, acc))
+        {
+            vel_desired = vel_final;
+            is_breaking = true;
+
+            // TODO: for now do not do this, as it may cause a deadlock
+            //             acc.lin = required_breaking_acc(dist_remaining.lin, vel_current.lin, vel_final.lin);
+            // #if DEBUG_STORE_VEL_DESIRED_AND_ACC == 1
+            //             this->acc.lin = acc.lin;
+            // #endif
+        }
+
+#if DEBUG_STORE_VEL_DESIRED_AND_ACC == 1
+        this->vel_desired.lin = vel_desired;
+#endif
+
+    // calculate new linear velocity
+    float vel_new_lin = update_velocity(vel_current.lin, vel_desired, acc);
+    // calculate the angular velocity based on linear velocity
+    float vel_new_ang = vel_new_lin * k;
+
+    // calculate the distance traveled using trapezoidal integration
+    // (which should be "ideal" for constant accelerations)
+    // trapezoidal rule: (a+b) / 2 * h
+    float distance_traveled_lin = (vel_current.lin + vel_new_lin) / 2 * dt;
+    float distance_traveled_ang = (vel_current.ang + vel_new_ang) / 2 * dt;
+
+    // reduce remaining distance
+    dist_remaining.lin -= distance_traveled_lin;
+    dist_remaining.ang -= distance_traveled_ang;
+
+    // update regulator target
+    update_target_by(
+            direction_lin * distance_traveled_lin,
+            direction_ang * distance_traveled_ang);
+
+    // save the new velocity as current
+    vel_current = {vel_new_lin, vel_new_ang};
+
+    // wait
+    delay(dt);
+
+    }
+
+    // compensate for the last step if any distance is still remaining (t = s/v)
+    // TODO: this may create errors if both velocities are non-zero
+    float t = (vel_current.lin > 0) ? (dist_remaining.lin / vel_current.lin) : 0;
+    delay(t);
+    dist_remaining = {0, 0};
+
+    // compensate for current velocity if we couldn't break fast enough
+    // (we can, as we supply position, not velocity to the regulator)
+    if (vel_current.lin > vel_final) {
+        vel_current.lin = vel_final;
+        vel_current.ang = vel_current.lin * k;
+    }
+}
+
+
+void Controller::move_lin_ang(Vec2 distance, Vec2 vel_desired, Vec2 acc, Vec2 vel_final) {
     int direction_lin = distance.lin > 0 ? 1 : -1;
     int direction_ang = distance.ang > 0 ? 1 : -1;
 
@@ -105,6 +197,8 @@ void Controller::move_arc(Vec2 distance, Vec2 vel_desired, Vec2 acc, Vec2 vel_fi
     if (vel_current.ang > vel_final.ang)
         vel_current.ang = vel_final.ang;
 }
+
+
 
 bool Controller::should_be_breaking(float dist_remaining, float vel_current, float vel_final, float acc)  {
     float dist_required = (vel_current + vel_final) * (vel_current - vel_final) / (2 * acc);
