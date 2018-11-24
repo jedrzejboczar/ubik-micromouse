@@ -7,6 +7,7 @@
 #include "ubik/logging/stats.h"
 #include "system_monitor.h"
 
+#include "localization/odometry.h"
 #include "movement/regulator.h"
 #include "movement/controller.h"
 #include "common/distance_sensors.h"
@@ -107,7 +108,8 @@ void run() {
     /*** Initialize modules ***************************************************/
 
     spi::initialise(); // encoders & gpio expander
-    distance_sensors::initialise(); // encoders & gpio expander
+    distance_sensors::initialise(); // ADC
+    localization::initialise(); // encoders odomoetry
     movement::motors::initialise(); // motor control
     movement::regulator::initialise(); // PID regulator
 

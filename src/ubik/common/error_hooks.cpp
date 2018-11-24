@@ -108,6 +108,10 @@ void dumb_delay(uint32_t ms) {
     }
 }
 
+// this is dummy implementation as this robot doesn't have any LEDs
+// connected directly to uC
+// blinkin would require using SPI to talk to gpio expander, which
+// is not that simple, so just don't do it in error hooks
 void blinkErrorLED(int n_times, int delay_ms) {
     for (int i = 0; i < n_times; i++) {
         // HAL_GPIO_WritePin(LD5_GPIO_Port, LD5_Pin, GPIO_PIN_SET);

@@ -1,5 +1,6 @@
 add_subdirectory(common)
 add_subdirectory(logging)
+add_subdirectory(localization)
 add_subdirectory(movement)
 
 target_sources(${CMAKE_PROJECT_NAME}

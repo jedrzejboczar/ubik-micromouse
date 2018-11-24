@@ -12,12 +12,14 @@
 
 #include "ubik/common/spi_devices.h"
 #include "ubik/common/robot_parameters.h"
+#include "ubik/localization/odometry.h"
 #include "motor_control.h"
 #include "pid.h"
 
 namespace movement {
 namespace regulator {
 
+static constexpr float LOOP_FREQUENCY = 1e3;
 
 // TODO: better interface
 
