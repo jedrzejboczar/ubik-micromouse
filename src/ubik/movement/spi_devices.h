@@ -59,6 +59,7 @@ static constexpr uint8_t DISTANCE_SENSORS_ALL() {
     for (uint8_t b: DISTANCE_SENSORS) bits |= b;
     return bits;
 }
+static_assert(DISTANCE_SENSORS_ALL() == 0b00111111);
 
 } // namespace gpio
 

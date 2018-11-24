@@ -39,10 +39,18 @@ extern uint32_t logs_lost_from_uart_errors;
 extern uint32_t logs_lost_from_notification_timeouts;
 extern uint32_t logs_lost_from_isr;
 }
+
 namespace movement::regulator {
 extern float mean_regulation_time_us;
 }
 using movement::regulator::mean_regulation_time_us;
+
+namespace spi {
+extern float mean_read_encoders_time_us;
+extern float mean_update_pins_time_us;
+}
+using spi::mean_read_encoders_time_us;
+using spi::mean_update_pins_time_us;
 
 
 /*** Formats for printing final stats *****************************************/
@@ -73,6 +81,8 @@ logs_lost_from_uart_errors = %lu\n\
 logs_lost_from_notification_timeouts = %lu\n\
 logs_lost_from_isr = %lu\n\
 mean_regulation_time_us = %ld\n\
+mean_read_encoders_time_us = %ld\n\
+mean_update_pins_time_us = %ld\n\
 ";
 
 static const char fmt_footer[] =
@@ -140,13 +150,15 @@ void print_stats() {
         logging::log_blocking(msg);
 
         // error counts
-        msg = logging::Msg::dynamic(strlen(fmt_counts) + 5*10);
+        msg = logging::Msg::dynamic(strlen(fmt_counts) + 7*10);
         snprintf(msg.as_chars(), msg.size, fmt_counts,
                 logs_lost,
                 logs_lost_from_uart_errors,
                 logs_lost_from_notification_timeouts,
                 logs_lost_from_isr,
-                static_cast<int32_t>(mean_regulation_time_us)
+                static_cast<int32_t>(mean_regulation_time_us),
+                static_cast<int32_t>(mean_read_encoders_time_us),
+                static_cast<int32_t>(mean_update_pins_time_us)
                 );
         logging::log_blocking(msg);
 

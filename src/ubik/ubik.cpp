@@ -33,17 +33,15 @@ extern "C" void extern_main(void) { run(); }
 
 
 void distance_sensors_task(void *) {
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskDelay(pdMS_TO_TICKS(300));
 
     while(1) {
 #if 0
         auto readings = distance_sensors::read(spi::gpio::DISTANCE_SENSORS_ALL());
 #else
-        auto readings = distance_sensors::read(
-                spi::gpio::DISTANCE_SENSORS[0] |
-                spi::gpio::DISTANCE_SENSORS[1] |
-                spi::gpio::DISTANCE_SENSORS[4] |
-                spi::gpio::DISTANCE_SENSORS[5]);
+        uint8_t sensors = spi::gpio::DISTANCE_SENSORS[0] | spi::gpio::DISTANCE_SENSORS[1]
+            | spi::gpio::DISTANCE_SENSORS[4] | spi::gpio::DISTANCE_SENSORS[5];
+        auto readings = distance_sensors::read( sensors);
 #endif
 
         logging::printf(100, "%4d %4d %4d %4d %4d %4d\n\n",
@@ -86,9 +84,9 @@ void set_target_position_task(void *) {
         controller.move_arc({.20, 0             }, { vel_lin, 0 }, { acc_lin, 0 });
         controller.move_arc({0,   deg2rad(-180) }, { 0, vel_ang }, { 0, acc_ang });
 
-        // spi::gpio::update_pins(spi::gpio::LED_RED, spi::gpio::LED_BLUE);
+        spi::gpio::update_pins(spi::gpio::LED_RED, spi::gpio::LED_BLUE);
         vTaskDelay(pdMS_TO_TICKS(1500));
-        // spi::gpio::update_pins(spi::gpio::LED_BLUE, spi::gpio::LED_RED);
+        spi::gpio::update_pins(spi::gpio::LED_BLUE, spi::gpio::LED_RED);
     }
 }
 
@@ -113,13 +111,13 @@ void run() {
     all_created &= xTaskCreate(set_target_position_task, "Setter",
             configMINIMAL_STACK_SIZE * 3, nullptr, 2, nullptr) == pdPASS;
     all_created &= xTaskCreate(system_monitor_task, "SysMonitor",
-            configMINIMAL_STACK_SIZE * 2, nullptr, 3, nullptr) == pdPASS;
-    all_created &= xTaskCreate(movement::regulator::regulation_task, "Regulator",
             configMINIMAL_STACK_SIZE * 2, nullptr, 4, nullptr) == pdPASS;
+    all_created &= xTaskCreate(movement::regulator::regulation_task, "Regulator",
+            configMINIMAL_STACK_SIZE * 2, nullptr, 5, nullptr) == pdPASS;
     all_created &= xTaskCreate(logging::stats_monitor_task, "Stats",
             configMINIMAL_STACK_SIZE * 2, reinterpret_cast<void *>(pdMS_TO_TICKS(10*1000)), 1, nullptr) == pdPASS;
     all_created &= xTaskCreate(distance_sensors_task, "Distance",
-            configMINIMAL_STACK_SIZE * 2, nullptr, 1, nullptr) == pdPASS;
+            configMINIMAL_STACK_SIZE * 2, nullptr, 3, nullptr) == pdPASS;
     configASSERT(all_created);
 
     /*** Print debug memory debug information *********************************/

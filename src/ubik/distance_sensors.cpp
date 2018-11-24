@@ -72,6 +72,9 @@ void initialise() {
 }
 
 Readings read(uint8_t gpio_ex_sensors) {
+    // mask input argument
+    gpio_ex_sensors &= spi::gpio::DISTANCE_SENSORS_ALL();
+
     // readings buffers
     uint16_t readings_off[6] = {0};
     uint16_t readings_on[6] = {0};
@@ -80,8 +83,8 @@ Readings read(uint8_t gpio_ex_sensors) {
     lock();
 
     bool readings_ok = false;
-
     const int n_readings = configure_adc_channels(gpio_ex_sensors);
+
     if (n_readings > 0) {
         // measure the ambient light levels
         if (HAL_ADC_Start_DMA(&ds_hadc, reinterpret_cast<uint32_t *>(readings_off), n_readings) == HAL_OK) {
@@ -93,7 +96,7 @@ Readings read(uint8_t gpio_ex_sensors) {
                 if (spi::gpio::update_pins(gpio_ex_sensors, 0)) {
 
                     // & wait until they fully turn on
-                    bool delay_ok = delay_us(LEDS_TURN_ON_WAIT_TIME_US); // TODO: maybe this should also be included to readings_ok?
+                    bool delay_ok = delay_us(LEDS_TURN_ON_WAIT_TIME_US);
 
                     // measure the light levels registered
                     if (HAL_ADC_Start_DMA(&ds_hadc, reinterpret_cast<uint32_t *>(readings_on), n_readings) == HAL_OK) {
@@ -106,6 +109,7 @@ Readings read(uint8_t gpio_ex_sensors) {
                         portYIELD();
                         spi::gpio::update_pins(0, spi::gpio::DISTANCE_SENSORS_ALL());
                     }
+
                 }
             }
         }
@@ -185,7 +189,7 @@ static int configure_adc_channels(uint8_t sensors) {
     // set the final number of ranks to be converted
     int n_conversions = current_channel_rank;
     int sqr_num_ranks = n_conversions - 1; // 0 means 1 conversion
-    configASSERT(sqr_num_ranks >= 0);
+    configASSERT(n_conversions > 0 && n_conversions <= n_elements(spi::gpio::DISTANCE_SENSORS));
 
     // set the same sampling times for all channels with distance sensors
     uint32_t new_SMPR2 = 0;

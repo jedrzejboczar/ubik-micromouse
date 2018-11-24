@@ -1,11 +1,15 @@
 #include "spi_devices.h"
 
-#include "stm32f1xx.h"
+#include <cstring> // memset
 
+#include "stm32f1xx.h"
 #include "FreeRTOS.h"
 #include "semphr.h"
 
-#include <cstring> // memset
+#include "ubik/timing.h"
+
+#define TIMING_ENABLED 1
+
 
 namespace spi {
 
@@ -48,6 +52,12 @@ static SemaphoreHandle_t mutex = nullptr;
 // collection of bits for port
 static uint8_t gpioex_port_state = 0;
 
+// timing stats
+float mean_read_encoders_time_us = 0;
+int32_t mean_read_encoders_time_i = 0;
+float mean_update_pins_time_us = 0;
+int32_t mean_update_pins_time_i = 0;
+
 static bool initialise_encoders();
 static bool initialise_gpio_expander();
 static bool gpio_expander_write3(uint8_t b1, uint8_t b2, uint8_t b3);
@@ -81,6 +91,12 @@ EncoderReadings read_encoders() {
     // get access to SPI
     lock();
 
+#if TIMING_ENABLED == 1
+    // timing start
+    cycles_counter::reset();
+    cycles_counter::start();
+#endif
+
     // set correct SPI mode
     configure_spi_mode(AS5045_ENCODERS);
 
@@ -92,6 +108,14 @@ EncoderReadings read_encoders() {
     HAL_GPIO_WritePin(enc_right_cs_port, enc_right_cs_pin, GPIO_PIN_RESET);
     right_status = HAL_SPI_Receive(&hspi, buffer + 3, 3, timeout_ms);
     HAL_GPIO_WritePin(enc_right_cs_port, enc_right_cs_pin, GPIO_PIN_SET);
+
+#if TIMING_ENABLED == 1
+    // end timing
+    cycles_counter::stop();
+    uint32_t micros = cycles_counter::get_us();
+    // m[n] = m[n-1] + (a[n] - m[n-1]) / n
+    mean_read_encoders_time_us += (micros - mean_read_encoders_time_us) / (mean_read_encoders_time_i++ + 1);
+#endif
 
     // return access to SPI
     unlock();
@@ -108,6 +132,15 @@ EncoderReadings read_encoders() {
 }
 
 bool gpio::update_pins(uint8_t bits_to_set, uint8_t bits_to_reset) {
+    // get access to SPI
+    lock();
+
+#if TIMING_ENABLED == 1
+    // timing start
+    cycles_counter::reset();
+    cycles_counter::start();
+#endif
+
     uint8_t new_state = gpioex_port_state;
     new_state |= bits_to_set;
     new_state &= ~(bits_to_reset);
@@ -116,6 +149,17 @@ bool gpio::update_pins(uint8_t bits_to_set, uint8_t bits_to_reset) {
 
     if (ok)
         gpioex_port_state = new_state;
+
+#if TIMING_ENABLED == 1
+    // end timing
+    cycles_counter::stop();
+    uint32_t micros = cycles_counter::get_us();
+    // m[n] = m[n-1] + (a[n] - m[n-1]) / n
+    mean_update_pins_time_us += (micros - mean_update_pins_time_us) / (mean_update_pins_time_i++ + 1);
+#endif
+
+    // return access to SPI
+    unlock();
 
     return ok;
 }
@@ -148,9 +192,6 @@ static bool gpio_expander_write3(uint8_t b1, uint8_t b2, uint8_t b3) {
     int timeout_ms = 2;
     bool ok;
 
-    // get access to SPI
-    lock();
-
     // set correct SPI mode
     configure_spi_mode(MCP23S08_GPIO_EXPANDER);
 
@@ -159,51 +200,62 @@ static bool gpio_expander_write3(uint8_t b1, uint8_t b2, uint8_t b3) {
     ok = HAL_SPI_Transmit(&hspi, buffer, sizeof(buffer), timeout_ms) == HAL_OK;
     HAL_GPIO_WritePin(gpioex_cs_port, gpioex_cs_pin, GPIO_PIN_SET);
 
-    // return access to SPI
-    unlock();
-
     return ok;
 }
+
+#define __HAL_SPI_ENABLE(__HANDLE__) ((__HANDLE__)->Instance->CR1 |=  SPI_CR1_SPE)
+#define __HAL_SPI_DISABLE(__HANDLE__) ((__HANDLE__)->Instance->CR1 &= (~SPI_CR1_SPE))
 
 static void configure_spi_mode(Device dev) {
     // for AS5045_ENCODERS we need MSB first, CLK pol high, CLK phase 1st edge
     // (see as5045.h)
     // for MCP23S08 we need MSB first, CLK pol low, CLK phase 1st edge
+
+
+    // No idea why, but however I've tried (and I REALLY tried a lot),
+    // only when we transmit a byte after changing SPI options,
+    // we can avoid the problem that when setting LED_BLUE, a reading
+    // from encoder is read wrong, causing motor flickering.
+    // We can always transmit freely, as the function is always used
+    // BEFORE enabling any CS pin.
+
+    // disable the SPI before changing anything
+    while ((hspi.Instance->CR1 & SPI_SR_BSY) != 0) {}
+    hspi.Instance->CR1 &= ~SPI_CR1_SPE;
+
+    // change configuration
+    uint32_t reg = hspi.Instance->CR1;
     switch (dev) {
         case AS5045_ENCODERS:
             {
-                uint32_t reg = hspi.Instance->CR1;
                 reg |= SPI_CR1_CPOL; // idle high
                 reg &= ~SPI_CR1_CPHA; // 1st edge
-                hspi.Instance->CR1 = reg;
                 break;
             }
         case MCP23S08_GPIO_EXPANDER:
             {
-                uint32_t reg = hspi.Instance->CR1;
                 reg &= ~SPI_CR1_CPOL; // idle low
                 reg &= ~SPI_CR1_CPHA; // 1st edge
-                hspi.Instance->CR1 = reg;
                 break;
             }
-            break;
     }
+    hspi.Instance->CR1 = reg;
+
+    // send one byte to make the SPI configuration "settle down"
+    uint8_t tmp = 0;
+    HAL_SPI_Transmit(&hspi, &tmp, 1, 1);
 }
 
 static void lock() {
-    if (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING) {
-        // this should always succeed as we wait indefinitelly
-        bool taken = xSemaphoreTake(mutex, portMAX_DELAY) == pdPASS;
-        configASSERT(taken);
-    }
+    // this should always succeed as we wait indefinitelly
+    bool taken = xSemaphoreTake(mutex, portMAX_DELAY) == pdPASS;
+    configASSERT(taken);
 }
 
 static void unlock() {
-    if (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING) {
-        // this could only fail if we didn't take the semaphore earlier
-        bool could_give = xSemaphoreGive(mutex) == pdPASS;
-        configASSERT(could_give);
-    }
+    // this could only fail if we didn't take the semaphore earlier
+    bool could_give = xSemaphoreGive(mutex) == pdPASS;
+    configASSERT(could_give);
 }
 
 
