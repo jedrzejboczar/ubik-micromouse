@@ -6,7 +6,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include "logging/logging.h"
+#include "ubik/logging/logging.h"
 
 extern "C" {
 

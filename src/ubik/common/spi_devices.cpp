@@ -6,7 +6,7 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 
-#include "ubik/timing.h"
+#include "ubik/common/timing.h"
 
 #define TIMING_ENABLED 1
 

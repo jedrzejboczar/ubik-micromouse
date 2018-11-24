@@ -7,7 +7,7 @@
 #include "task.h"
 #include "semphr.h"
 
-#include "ubik/movement/spi_devices.h"
+#include "spi_devices.h"
 
 namespace distance_sensors {
 

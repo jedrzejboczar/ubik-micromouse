@@ -10,10 +10,10 @@
 #include "task.h"
 #include "semphr.h"
 
-#include "pid.h"
+#include "ubik/common/spi_devices.h"
+#include "ubik/common/robot_parameters.h"
 #include "motor_control.h"
-#include "spi_devices.h"
-#include "robot_parameters.h"
+#include "pid.h"
 
 namespace movement {
 namespace regulator {

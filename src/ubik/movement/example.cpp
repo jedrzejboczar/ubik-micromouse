@@ -142,17 +142,17 @@ int main()
     float acc = 1.200;
 
     c.move_line(0.5, 1.0, acc);
-    c.move_rotate(2*PI/3, 1.0, acc);
+    c.move_rotate(2*M_PI/3, 1.0, acc);
     c.move_line(0.5, 1.0, acc);
-    c.move_rotate(2*PI/3, 1.0, acc);
+    c.move_rotate(2*M_PI/3, 1.0, acc);
     c.move_line(0.5, 1.0, acc);
-    c.move_rotate(5*PI/6, 1.0, acc);
+    c.move_rotate(5*M_PI/6, 1.0, acc);
 
-    c.move_arc({0.8, PI}, 1.3, acc, 0.9); cnt();
-    c.move_arc({1.3, PI}, 0.9, acc); cnt();
-    c.move_arc({0.8, -PI}, 1.3, acc); cnt();
-    c.move_arc({-0.9, PI}, 1.3, acc); cnt();
-    c.move_arc({-0.3, -PI}, 1.3, acc); cnt();
+    c.move_arc({0.8, M_PI}, 1.3, acc, 0.9); cnt();
+    c.move_arc({1.3, M_PI}, 0.9, acc); cnt();
+    c.move_arc({0.8, -M_PI}, 1.3, acc); cnt();
+    c.move_arc({-0.9, M_PI}, 1.3, acc); cnt();
+    c.move_arc({-0.3, -M_PI}, 1.3, acc); cnt();
 
     save_to_file();
     system("python example.py");

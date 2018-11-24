@@ -1,7 +1,7 @@
 #include "regulator.h"
 
 #include "ubik/logging/logging.h"
-#include "ubik/timing.h"
+#include "ubik/common/timing.h"
 
 #define TIMING_ENABLED 0
 
@@ -85,7 +85,6 @@ void regulation_task(void *) {
 
     // prepare loop timing
     auto last_start = xTaskGetTickCount();
-    size_t counter = 0;
     bool is_enabled = regulation_enabled;
 
     while (1) {
@@ -149,6 +148,7 @@ void regulation_task(void *) {
             }
 
             // // DEBUG
+            // static size_t counter = 0;
             // if (counter++ % 10 == 0)
             //     logging::printf(120, "%8d,%8d,%8d,%8d,%8d,%8d\n",
             //             (int) set_point_left, (int) position_left, (int) out_left,

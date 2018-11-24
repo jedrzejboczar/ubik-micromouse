@@ -53,6 +53,11 @@ openocd_add_gdb_target(${CMAKE_PROJECT_NAME})
 # process all other directories
 add_subdirectory(src)
 
+# add libraries
+target_link_libraries(${CMAKE_PROJECT_NAME}
+    # again, prevent linker from removing some symbols, because it then seems to add some from standard library
+    PRIVATE  mpaland_printf)
+
 # if we built cube as library it has to be linked after adding all sources
 if(CUBE_AS_STATIC_LIB)
     target_link_libraries(${CMAKE_PROJECT_NAME}
@@ -61,6 +66,7 @@ if(CUBE_AS_STATIC_LIB)
         PRIVATE "-Wl,--whole-archive" cube "-Wl,--no-whole-archive")
 endif()
 
+# set language standards and compilation flags
 set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY C_STANDARD 11)
 set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 

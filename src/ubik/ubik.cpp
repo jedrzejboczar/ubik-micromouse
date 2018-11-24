@@ -2,14 +2,14 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include "timing.h"
-#include "system_monitor.h"
+#include "ubik/common/timing.h"
 #include "ubik/logging/logging.h"
 #include "ubik/logging/stats.h"
+#include "system_monitor.h"
 
 #include "movement/regulator.h"
 #include "movement/controller.h"
-#include "distance_sensors.h"
+#include "common/distance_sensors.h"
 
 
 void run();

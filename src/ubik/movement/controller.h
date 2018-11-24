@@ -2,8 +2,6 @@
 
 #include <algorithm>
 
-#include "robot_parameters.h"
-
 #define DEBUG_STORE_VEL_DESIRED_AND_ACC 1
 
 

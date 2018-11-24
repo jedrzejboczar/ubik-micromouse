@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include "as5045.h"
-#include "ubik/macros.h"
+#include "macros.h"
 
 /*
  * This module guards the SPI peripheral by providing

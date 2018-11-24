@@ -8,7 +8,7 @@
  * should just call a handle function from given module.
  */
 
-#include "ubik/distance_sensors.h"
+#include "ubik/common/distance_sensors.h"
 
 
 extern "C" {
