@@ -29,13 +29,13 @@ void distance_sensors_task(void *) {
         auto readings = distance_sensors::read( sensors);
 #endif
 
-        logging::printf(100, "%4d %4d %4d %4d %4d %4d\n\n",
-                readings.sensor[0],
-                readings.sensor[1],
-                readings.sensor[2],
-                readings.sensor[3],
-                readings.sensor[4],
-                readings.sensor[5]);
+        // logging::printf(100, "%4d %4d %4d %4d %4d %4d\n\n",
+        //         readings.sensor[0],
+        //         readings.sensor[1],
+        //         readings.sensor[2],
+        //         readings.sensor[3],
+        //         readings.sensor[4],
+        //         readings.sensor[5]);
 
         vTaskDelay(50);
     }
@@ -49,18 +49,22 @@ void movement::Controller::delay(float dt) {
 }
 
 void set_target_position_task(void *) {
+    vTaskDelay(pdMS_TO_TICKS(500));
+
     using constants::deg2rad;
     movement::Controller c(100);
 
-    float vel_lin = 0.3;
-    float acc_lin = 0.15;
+    // choose velocities
+    system_monitor::lock_button();
+
+    float vel_lin = system_monitor::select_with_wheels(0, 5, 1.0, 0.1, 0.3, "vel_lin =");
+    float acc_lin = system_monitor::select_with_wheels(0, 5, 1.0, 0.1, 0.3, "acc_lin =");
     // float vel_ang = deg2rad(300);
     // float acc_ang = deg2rad(400);
+    system_monitor::unlock_button();
 
-    vTaskDelay(pdMS_TO_TICKS(500));
     while (1) {
         logging::printf(50, "Next cycle\n");
-
 
         // // move on an equilateral traingle with a=10cm
         // float a = 0.15;
@@ -109,6 +113,7 @@ void set_target_position_task(void *) {
         spi::gpio::update_pins(spi::gpio::LED_RED, spi::gpio::LED_BLUE);
         vTaskDelay(pdMS_TO_TICKS(1500));
         spi::gpio::update_pins(spi::gpio::LED_BLUE, spi::gpio::LED_RED);
+
     }
 }
 
@@ -119,7 +124,8 @@ void run() {
     /*** Initialize modules ***************************************************/
 
     spi::initialise(); // encoders & gpio expander
-    distance_sensors::initialise(); // ADC
+    distance_sensors::initialise(); // distance sensors' ADC
+    system_monitor::initialise(); // battery and regulation control
     localization::initialise(); // encoders odomoetry
     movement::motors::initialise(); // motor control
     movement::regulator::initialise(); // PID regulator
@@ -133,7 +139,7 @@ void run() {
     bool all_created = true;
     all_created &= xTaskCreate(set_target_position_task, "Setter",
             configMINIMAL_STACK_SIZE * 3, nullptr, 2, nullptr) == pdPASS;
-    all_created &= xTaskCreate(system_monitor_task, "SysMonitor",
+    all_created &= xTaskCreate(system_monitor::system_monitor_task, "SysMonitor",
             configMINIMAL_STACK_SIZE * 2, nullptr, 4, nullptr) == pdPASS;
     all_created &= xTaskCreate(movement::regulator::regulation_task, "Regulator",
             configMINIMAL_STACK_SIZE * 2, nullptr, 5, nullptr) == pdPASS;

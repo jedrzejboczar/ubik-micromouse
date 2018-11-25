@@ -3,15 +3,17 @@
 #include "stm32f1xx.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "semphr.h"
+
+namespace system_monitor {
 
 // system monitor task loop frequency
 static constexpr float LOOP_FREQ_HZ = 10;
 static constexpr float VOLTAGE_WARINGS_FREQ_HZ = 1;
 
-
-
-// button
+// system monitor button regulation toggling
 static constexpr bool REGULATION_START_ON = true; // state in which to start robot
+
 
 // button debouncing
 static constexpr int N_BUTTON_MEASUREMENTS = 10; // how many samples to take
@@ -40,4 +42,40 @@ constexpr float WARING_VOLTAGE = 3.4 * N_LIPOL_CELLS;
 constexpr float VOLTAGE_IIR_B[] = {0.08636403, 0.08636403};
 constexpr float VOLTAGE_IIR_A[] = {-0.82727195};
 
+
+void initialise();
+
+/*
+ * The system monitor by default uses button for toggling motors regulation.
+ * To use the button for other tasks ALWAYS lock it first, this will disable
+ * regulation toggling. Remember to unlock it later!
+ * No public function in this module will lock the button by itself!
+ */
+void lock_button();
+void unlock_button();
+
+/*
+ * Wait for a specified time until user pressed the button,
+ * return false if not pressed.
+ * Uses button debouncing, so minimal wait time =
+ *     N_BUTTON_MEASUREMENTS * TIME_BETWEEN_MEASUREMENTS_MS
+ */
+bool wait_for_button_press(uint32_t max_wait_time_ms);
+
+/*
+ * Select a value from continuous range from `min_value` to `max_value`, where
+ * full wheel turn (360 deg.) for each wheel corresponds to a change of
+ * `value_per_left_wheel_turn` or 'value_per_right_wheel_turn'.
+ * Forward motion of a wheel increases the value.
+ * To confirm the chosen value, press the button.
+ * Starts from `initial_value`.
+ * If `print_prompt` == nullptr, printing is disabled.
+ */
+float select_with_wheels(float min_value, float max_value,
+        float value_per_left_wheel_turn, float value_per_right_wheel_turn,
+        float initial_value=0, const char *print_prompt="Selecting...");
+
+
 void system_monitor_task(void *);
+
+} // namespace system_monitor
