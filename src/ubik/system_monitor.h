@@ -1,5 +1,7 @@
 #pragma once
 
+#include <tuple>
+
 #include "stm32f1xx.h"
 #include "FreeRTOS.h"
 #include "task.h"
@@ -17,8 +19,8 @@ static constexpr bool REGULATION_START_ON = true; // state in which to start rob
 
 // button debouncing
 static constexpr int N_BUTTON_MEASUREMENTS = 10; // how many samples to take
-static constexpr int MIN_BUTTON_ON_COUNT = 6; // how many samples are needed to register button press
-static constexpr int TIME_BETWEEN_MEASUREMENTS_MS = 8; // time between subsequent samples
+static constexpr int MIN_BUTTON_ON_COUNT = 7; // how many samples are needed to register button press
+static constexpr int TIME_BETWEEN_MEASUREMENTS_MS = 6; // time between subsequent samples
 static constexpr int MIN_BUTTON_DELAY_MS = 500; // minimum delay between subsequent button presses
 
 
@@ -71,9 +73,13 @@ bool wait_for_button_press(uint32_t max_wait_time_ms);
  * Starts from `initial_value`.
  * If `print_prompt` == nullptr, printing is disabled.
  */
-float select_with_wheels(float min_value, float max_value,
-        float value_per_left_wheel_turn, float value_per_right_wheel_turn,
-        float initial_value=0, const char *print_prompt="Selecting...");
+static constexpr float SELECTION_RIGHT_WHEEL_RESOLUTION_RATIO = 10;  // right wheel has N times finer resolution
+static constexpr float MIN_PRINTED_DIFFERENCE_RATIO = 0.0005;  // ratio of full range
+float select_with_wheels(float initial_value, std::pair<float, float> values_range,
+        float change_per_left_wheel_turn, const char *print_prompt="Selecting...");
+// right wheel increments by 1, always
+int select_with_wheels(int initial_value, int n_values,
+        int increments_per_left_wheel_turn, const char *print_prompt="Selecting...");
 
 
 void system_monitor_task(void *);

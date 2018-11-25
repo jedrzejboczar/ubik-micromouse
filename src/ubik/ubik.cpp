@@ -54,65 +54,87 @@ void set_target_position_task(void *) {
     using constants::deg2rad;
     movement::Controller c(100);
 
-    // choose velocities
+    // select velocities
     system_monitor::lock_button();
-
-    float vel_lin = system_monitor::select_with_wheels(0, 5, 1.0, 0.1, 0.3, "vel_lin =");
-    float acc_lin = system_monitor::select_with_wheels(0, 5, 1.0, 0.1, 0.3, "acc_lin =");
-    // float vel_ang = deg2rad(300);
-    // float acc_ang = deg2rad(400);
+    float vel_lin = system_monitor::select_with_wheels(0.3, {0.0, 3.0}, 3.0, "vel_lin =");
+    float acc_lin = system_monitor::select_with_wheels(0.3, {0.0, 3.0}, 3.0, "acc_lin =");
+    float vel_ang = system_monitor::select_with_wheels(deg2rad(360), {0.0, 5 * deg2rad(360)}, 5 * deg2rad(360), "vel_ang =");
+    float acc_ang = system_monitor::select_with_wheels(deg2rad(360), {0.0, 5 * deg2rad(360)}, 5 * deg2rad(360), "acc_ang =");
     system_monitor::unlock_button();
 
+    int choice = 0;
     while (1) {
         logging::printf(50, "Next cycle\n");
 
-        // // move on an equilateral traingle with a=10cm
-        // float a = 0.15;
-        // float R = 0.577f * a;
-        //
-        // c.move_line(a, vel_lin, acc_lin);
-        // c.move_rotate(deg2rad(120), vel_ang, acc_ang);
-        // c.move_line(a, vel_lin, acc_lin, 0);
-        // // c.move_rotate(deg2rad(120), vel_ang, acc_ang);
-        // // c.move_line(a, vel_lin, acc_lin, 0);
-        // // c.move_rotate(deg2rad(120), vel_ang, acc_ang);
-        //
-        // // move on the circle circumscribing the triangle
-        // c.move_rotate(deg2rad(60), vel_ang, acc_ang);
-        // c.move_arc({deg2rad(120) * R, deg2rad(120)}, vel_lin, acc_lin);
-        // // turn back
-        // c.move_rotate(deg2rad(-180 - 120), vel_ang, acc_ang);
-
-
-        // // move in an eight
-        // float R = 0.08;
-        // float angle = deg2rad(270);
-        // float arc_len = constants::arc_length(angle, R);
-        // int N = 2;
-        // float vel_final = 0.3f * vel_lin;
-        // // get initial speed
-        // c.move_line(R, vel_lin, acc_lin, vel_final);
-        // for (int i = 0; i < N; i++) {
-        //     c.move_arc({arc_len, -angle}, vel_lin, acc_lin, vel_final);
-        //     c.move_line(2 * R, vel_lin, acc_lin, vel_final);
-        //     c.move_arc({arc_len, angle}, vel_lin, acc_lin, vel_final);
-        //     if (i < N - 1)
-        //         c.move_line(2 * R, vel_lin, acc_lin, vel_final);
-        //     else
-        //         c.move_line(R, vel_lin, acc_lin, 0);
-        // }
-
-        // move in circle
-        float R = 0.15;
-        float angle = deg2rad(360);
-        float arc_len = constants::arc_length(angle, R);
-        c.move_arc({2*arc_len, 2*angle}, vel_lin, acc_lin);
-        c.move_arc({-2*arc_len, -2*angle}, vel_lin, acc_lin); // unwind the cables xD
-
+        enum {
+            TRIANGLE = 0, EIGHT, CIRCLE,
+            COUNT
+        };
 
         spi::gpio::update_pins(spi::gpio::LED_RED, spi::gpio::LED_BLUE);
-        vTaskDelay(pdMS_TO_TICKS(1500));
+        system_monitor::lock_button();
+        choice = system_monitor::select_with_wheels(choice, COUNT-1, 2 * COUNT, "choice =");
+        system_monitor::unlock_button();
         spi::gpio::update_pins(spi::gpio::LED_BLUE, spi::gpio::LED_RED);
+
+        switch (choice) {
+            case TRIANGLE:
+                {
+                    // move on an equilateral traingle with a=10cm
+                    float a = 0.15;
+                    float R = 0.577f * a;
+
+                    c.move_line(a, vel_lin, acc_lin);
+                    c.move_rotate(deg2rad(120), vel_ang, acc_ang);
+                    c.move_line(a, vel_lin, acc_lin, 0);
+                    // c.move_rotate(deg2rad(120), vel_ang, acc_ang);
+                    // c.move_line(a, vel_lin, acc_lin, 0);
+                    // c.move_rotate(deg2rad(120), vel_ang, acc_ang);
+
+                    // move on the circle circumscribing the triangle
+                    c.move_rotate(deg2rad(60), vel_ang, acc_ang);
+                    c.move_arc({deg2rad(120) * R, deg2rad(120)}, vel_lin, acc_lin);
+                    // turn back
+                    c.move_rotate(deg2rad(-180 - 120), vel_ang, acc_ang);
+                    break;
+                }
+            case EIGHT:
+                {
+                    // move in an eight
+                    float R = 0.08;
+                    float angle = deg2rad(270);
+                    float arc_len = constants::arc_length(angle, R);
+                    int N = 2;
+                    float vel_final = 0.3f * vel_lin;
+                    // get initial speed
+                    c.move_line(R, vel_lin, acc_lin, vel_final);
+                    for (int i = 0; i < N; i++) {
+                        c.move_arc({arc_len, -angle}, vel_lin, acc_lin, vel_final);
+                        c.move_line(2 * R, vel_lin, acc_lin, vel_final);
+                        c.move_arc({arc_len, angle}, vel_lin, acc_lin, vel_final);
+                        if (i < N - 1)
+                            c.move_line(2 * R, vel_lin, acc_lin, vel_final);
+                        else
+                            c.move_line(R, vel_lin, acc_lin, 0);
+                    }
+                    break;
+                }
+            case CIRCLE:
+                {
+                    // move in circle
+                    float R = 0.15;
+                    float angle = deg2rad(360);
+                    float arc_len = constants::arc_length(angle, R);
+                    c.move_arc({2*arc_len, 2*angle}, vel_lin, acc_lin);
+                    c.move_arc({-2*arc_len, -2*angle}, vel_lin, acc_lin); // unwind the cables xD
+                    break;
+                }
+
+        }
+
+        // spi::gpio::update_pins(spi::gpio::LED_RED, spi::gpio::LED_BLUE);
+        // vTaskDelay(pdMS_TO_TICKS(1500));
+        // spi::gpio::update_pins(spi::gpio::LED_BLUE, spi::gpio::LED_RED);
 
     }
 }

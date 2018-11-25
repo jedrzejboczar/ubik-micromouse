@@ -60,10 +60,14 @@ bool wait_for_button_press(uint32_t max_wait_time_ms) {
     return button_pressed;
 }
 
-float select_with_wheels(float min_value, float max_value,
-        float value_per_left_wheel_turn, float value_per_right_wheel_turn,
-        float initial_value, const char *print_prompt)
+
+
+static float select_with_wheels_generic(float initial_value, std::pair<float, float> values_range,
+        float change_per_left_wheel_turn, const char *print_prompt, bool is_int)
 {
+    auto to_int_value = [] (float value) { return static_cast<int>(std::round(value)); };
+
+    float last_value = std::numeric_limits<float>::max();
     float value = initial_value;
     int32_t initial_left, initial_right;
     std::tie(initial_left, initial_right) = localization::get_cumulative_encoder_ticks();
@@ -74,6 +78,7 @@ float select_with_wheels(float min_value, float max_value,
 
     // continue until the button is pressed
     while (!sampled_check_button()) {
+
         // get the current ticks
         int32_t left, right;
         std::tie(left, right) = localization::get_cumulative_encoder_ticks();
@@ -83,28 +88,80 @@ float select_with_wheels(float min_value, float max_value,
         right = initial_right - right;
 
         // calculate current value
-        float ticks_per_turn = localization::MAX_ENCODER_READING * constants::GEAR_RATIO;
+        const float ticks_per_turn = localization::MAX_ENCODER_READING * constants::GEAR_RATIO;
+        const float change_per_right_wheel_turn = /* is_int ? 1 : */
+            change_per_left_wheel_turn/SELECTION_RIGHT_WHEEL_RESOLUTION_RATIO;
         value = initial_value
-            + static_cast<float>(left) / ticks_per_turn * value_per_left_wheel_turn
-            + static_cast<float>(right) / ticks_per_turn * value_per_right_wheel_turn;
+            + left / ticks_per_turn * change_per_left_wheel_turn
+            + right / ticks_per_turn * change_per_right_wheel_turn;
 
         // saturate
-        value = std::max(min_value, value);
-        value = std::min(value, max_value);
+        value = std::max(values_range.first, value);
+        value = std::min(value, values_range.second);
 
         // print current value
-        if (print_prompt != nullptr)
-            logging::printf(100, "%s %.3f\n", print_prompt, static_cast<double>(value));
+        if (print_prompt != nullptr) {
+            float delta = (values_range.second - values_range.first) * MIN_PRINTED_DIFFERENCE_RATIO;
+            bool changed_enough;
+
+            if (is_int) {
+                changed_enough = std::abs( to_int_value(value) - to_int_value(last_value) ) > 0;
+            } else {
+                changed_enough = std::abs(value - last_value) > delta;
+            }
+
+            if (changed_enough) {
+                const char *suffix;
+                if (is_int) {
+                    suffix = to_int_value(value) == to_int_value(values_range.second) ? " (max)" :
+                        to_int_value(value) == to_int_value(values_range.first) ? " (min)" : "";
+                } else {
+                    suffix = value > values_range.second - delta ? " (max)" :
+                        value < values_range.first + delta ? " (min)" : "";
+                }
+
+                if (is_int)
+                    logging::printf(100, "%s %d%s\n", print_prompt, to_int_value(value), suffix);
+                else
+                    logging::printf(100, "%s %.3f%s\n", print_prompt, static_cast<double>(value), suffix);
+
+                last_value = value;
+            }
+
+        }
     }
 
     // re-enable regulation
     regulation_state = last_regulation_state;
 
-    if (print_prompt != nullptr)
-        logging::printf(100, "Selected: %.3f\n", static_cast<double>(value));
+    if (print_prompt != nullptr) {
+        if (is_int)
+            logging::printf(100, "Selected: %d\n", to_int_value(value));
+        else
+            logging::printf(100, "Selected: %.3f\n", static_cast<double>(value));
+    }
 
+    if (is_int)
+        value = to_int_value(value);
     return value;
 }
+
+
+float select_with_wheels(float initial_value, std::pair<float, float> values_range,
+        float change_per_left_wheel_turn, const char *print_prompt)
+{
+    return select_with_wheels_generic(initial_value, values_range,
+        change_per_left_wheel_turn, print_prompt, false);
+}
+int select_with_wheels(int initial_value, int n_values,
+        int increments_per_left_wheel_turn, const char *print_prompt)
+{
+    return select_with_wheels_generic(initial_value, {0, n_values},
+        increments_per_left_wheel_turn, print_prompt, true);
+}
+
+
+
 
 /******************************************************************************/
 
