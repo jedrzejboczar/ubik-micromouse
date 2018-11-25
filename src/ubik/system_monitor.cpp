@@ -39,6 +39,10 @@ void initialise() {
     configASSERT(button_mutex != nullptr);
 }
 
+bool get_regulation_state() {
+    return regulation_state;
+}
+
 void lock_button() {
     // this should always succeed as we wait indefinitelly
     bool taken = xSemaphoreTake(button_mutex, portMAX_DELAY) == pdPASS;
@@ -49,6 +53,10 @@ void unlock_button() {
     // this could only fail if we didn't take the semaphore earlier
     bool could_give = xSemaphoreGive(button_mutex) == pdPASS;
     configASSERT(could_give);
+}
+
+bool is_button_locked() {
+    return uxSemaphoreGetCount(button_mutex) == 0;
 }
 
 bool wait_for_button_press(uint32_t max_wait_time_ms) {

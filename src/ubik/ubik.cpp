@@ -29,13 +29,16 @@ void distance_sensors_task(void *) {
         auto readings = distance_sensors::read( sensors);
 #endif
 
-        // logging::printf(100, "%4d %4d %4d %4d %4d %4d\n\n",
-        //         readings.sensor[0],
-        //         readings.sensor[1],
-        //         readings.sensor[2],
-        //         readings.sensor[3],
-        //         readings.sensor[4],
-        //         readings.sensor[5]);
+        // won't always work as expected, but basically, print when not in select_with_wheels()
+        if (! system_monitor::is_button_locked() || system_monitor::get_regulation_state() == true) {
+            logging::printf(100, "%4d %4d %4d %4d %4d %4d\n\n",
+                    readings.sensor[0],
+                    readings.sensor[1],
+                    readings.sensor[2],
+                    readings.sensor[3],
+                    readings.sensor[4],
+                    readings.sensor[5]);
+        }
 
         vTaskDelay(50);
     }
@@ -132,10 +135,6 @@ void set_target_position_task(void *) {
 
         }
 
-        // spi::gpio::update_pins(spi::gpio::LED_RED, spi::gpio::LED_BLUE);
-        // vTaskDelay(pdMS_TO_TICKS(1500));
-        // spi::gpio::update_pins(spi::gpio::LED_BLUE, spi::gpio::LED_RED);
-
     }
 }
 
@@ -144,6 +143,9 @@ void run() {
     logging::printf_blocking(100, "Initialising system...\n");
 
     /*** Initialize modules ***************************************************/
+    // this mainly initializes all the peripheral devices
+    // and allocates all the required queues and semaphores
+    // TODO: create some tree-like hierarchy of initializations, as this gets unwieldy
 
     spi::initialise(); // encoders & gpio expander
     distance_sensors::initialise(); // distance sensors' ADC
@@ -152,23 +154,31 @@ void run() {
     movement::motors::initialise(); // motor control
     movement::regulator::initialise(); // PID regulator
 
-    /*** Prepare FreeRTOS tasks ***********************************************/
-
-    // Most tasks are implemented as singletons with lazy-evaluation, i.e.
-    // the object is constructed on first call to get(), so we need to
-    // create these tasks here, before starting the scheduler.
+    /*** Create FreeRTOS tasks ************************************************/
 
     bool all_created = true;
-    all_created &= xTaskCreate(set_target_position_task, "Setter",
-            configMINIMAL_STACK_SIZE * 3, nullptr, 2, nullptr) == pdPASS;
-    all_created &= xTaskCreate(system_monitor::system_monitor_task, "SysMonitor",
-            configMINIMAL_STACK_SIZE * 2, nullptr, 4, nullptr) == pdPASS;
-    all_created &= xTaskCreate(movement::regulator::regulation_task, "Regulator",
-            configMINIMAL_STACK_SIZE * 2, nullptr, 5, nullptr) == pdPASS;
-    all_created &= xTaskCreate(logging::stats_monitor_task, "Stats",
-            configMINIMAL_STACK_SIZE * 2, reinterpret_cast<void *>(pdMS_TO_TICKS(10*1000)), 1, nullptr) == pdPASS;
-    all_created &= xTaskCreate(distance_sensors_task, "Distance",
-            configMINIMAL_STACK_SIZE * 2, nullptr, 3, nullptr) == pdPASS;
+    // auto create_task = [&all_created] (auto ...args) {
+    //     auto result = xTaskCreate(args...);
+    //     all_created = all_created && result == pdPASS;
+    // };
+    auto create_task = [&all_created]
+        (auto name, auto priority, auto func, auto stack_size, auto param)
+        {
+            auto result = xTaskCreate(func, name, stack_size, param, priority, nullptr);
+            all_created = all_created && result == pdPASS;
+        };
+
+    create_task("Setter", 2, set_target_position_task,
+            configMINIMAL_STACK_SIZE * 3, nullptr);
+    create_task("SysMonitor", 4, system_monitor::system_monitor_task,
+            configMINIMAL_STACK_SIZE * 2, nullptr);
+    create_task("Regulator", 5, movement::regulator::regulation_task,
+            configMINIMAL_STACK_SIZE * 2, nullptr);
+    create_task("Stats", 1, logging::stats_monitor_task,
+            configMINIMAL_STACK_SIZE * 2, reinterpret_cast<void *>(pdMS_TO_TICKS(10*1000)));
+    create_task("Distance", 3, distance_sensors_task,
+            configMINIMAL_STACK_SIZE * 2, nullptr);
+
     configASSERT(all_created);
 
     /*** Print debug memory debug information *********************************/

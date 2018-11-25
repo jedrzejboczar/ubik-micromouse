@@ -47,6 +47,8 @@ constexpr float VOLTAGE_IIR_A[] = {-0.82727195};
 
 void initialise();
 
+bool get_regulation_state();
+
 /*
  * The system monitor by default uses button for toggling motors regulation.
  * To use the button for other tasks ALWAYS lock it first, this will disable
@@ -55,6 +57,7 @@ void initialise();
  */
 void lock_button();
 void unlock_button();
+bool is_button_locked();
 
 /*
  * Wait for a specified time until user pressed the button,
