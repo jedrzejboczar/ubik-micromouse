@@ -41,7 +41,7 @@ int main()
 
     maze::Cell cells[size * size];
     StaticStack<maze::Position, 64> stack;
-    maze::Maze maze(size, size, cells, stack);
+    maze::Maze maze(size, size, cells, stack, from);
 
     // RANDOM MAZE GENERATION
     srand(time(NULL));
@@ -60,14 +60,15 @@ int main()
         }
     }
     StaticStack<maze::Position, 1> dummy_stack;
-    maze::Maze real_maze(size, size, real_cells, dummy_stack);
+    maze::Maze real_maze(size, size, real_cells, dummy_stack, {0, 0});
     real_maze.print(from, maze::Position(to.x, to.y));
     std::cout << "Press enter to start." << std::endl;
     std::cin.get();
     // RANDOM MAZE GENERATION
 
-    maze::Position initial = maze::Position(0, 0);
-    maze::Position current = maze.go_from_to(initial, to);
+    bool success = maze.go_to(to);
+    if (!success)
+        std::cerr << "ERROR: could not finish maze!";
 
-    maze.print(current, maze::Position(to.x, to.y));
+    maze.print(maze.position(), maze::Position(to.x, to.y));
 }

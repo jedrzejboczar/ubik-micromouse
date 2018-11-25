@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <limits>
 
 
 /*
@@ -11,7 +12,8 @@
 enum class Dir: uint8_t {
     N = 0, E, S, W,
     COUNT,
-    FIRST = 0
+    FIRST = 0,
+    NONE = std::numeric_limits<uint8_t>::max() // used to signalise errors
 };
 
 static inline Dir& operator++(Dir& dir) {

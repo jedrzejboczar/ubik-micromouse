@@ -7,8 +7,13 @@
 #include <limits>
 #include <algorithm>
 
+#if defined(MAZE_TESTING)
+#include <cassert>
+#define configASSERT(x) assert(x)
+#else
 #include "FreeRTOS.h"
 #include "task.h"
+#endif
 
 #include "stack.h"
 #include "directions.h"
@@ -112,21 +117,24 @@ public:
     // Construct Maze of given dimensions using given 'cells' buffer.
     // Both 'cells' and 'stack' are referenced only (no construction/destruction)
     // and must be instantiated somewhere else and be valid as long as Maze.
-    Maze(size_t X, size_t Y, Cell cells[], Stack<Position> &stack);
+    Maze(size_t X, size_t Y, Cell cells[], Stack<Position> &stack, Position start_pos);
 
     // move between two positions and return end position
     // (Maze doesn't hold current position)
-    Position go_from_to(Position from, TargetPosition to);
+    bool go_to(TargetPosition to);
 
 #if defined(MAZE_TESTING)
     void print(Position current, Position target);
 #endif
 
+    Position position() { return current_pos; }
+    void set_position(Position pos) { current_pos = pos; }
 private:
     // structures allocated somewhere else, not owned
     size_t X, Y;
     Cell *cells;
     Stack<Position> &stack;
+    Position current_pos;
 
     // cell indexing
     Cell &cell(size_t x, size_t y);

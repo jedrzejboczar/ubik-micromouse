@@ -10,23 +10,26 @@
 
 namespace maze {
 
-Maze::Maze(size_t X, size_t Y, Cell cells[], Stack<Position> &stack):
-    X(X), Y(Y), cells(cells), stack(stack) { }
+Maze::Maze(size_t X, size_t Y, Cell cells[], Stack<Position> &stack, Position start_pos):
+    X(X), Y(Y), cells(cells), stack(stack), current_pos(start_pos) { }
 
-Position Maze::go_from_to(Position from, TargetPosition to) {
+bool Maze::go_to(TargetPosition to) {
     init_weights_to_target(to);
-    Position pos = from;
 
-    while (cell(pos).weight > 0) {
+    while (cell(current_pos).weight > 0) {
         // analyze current sensors readings (or from near past)
-        update_walls(pos, read_walls(pos));
-        flood_fill(pos);
+        update_walls(current_pos, read_walls(current_pos));
+        flood_fill(current_pos);
         // get all the directions that have minimal weight
-        Directions available_directions = reachable_neighbours(pos);
-        Directions considered_directions = lowest_weight_directions(pos, available_directions);
+        Directions available_directions = reachable_neighbours(current_pos);
+        Directions considered_directions = lowest_weight_directions(current_pos, available_directions);
 
         // choose a direction based on robot orientation and other possible conditions
         Dir dir = choose_best_direction(considered_directions);
+        if (dir == Dir::NONE) // if there is no avialable direction, then return
+            return false;
+
+        // perform the movement
         move_in_direction(dir);
 
         // [>*** OR ***<]
@@ -37,15 +40,15 @@ Position Maze::go_from_to(Position from, TargetPosition to) {
 
 #if defined(MAZE_TESTING)
         std::cout << std::string(X * 6, '-') << std::endl;
-        print(pos, Position(to.x, to.y));
+        print(current_pos, Position(to.x, to.y));
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
 #endif
 
         // update current position
-        pos = neighbour(pos, dir);
+        current_pos = neighbour(current_pos, dir);
     }
 
-    return pos;
+    return true;
 }
 
 Cell& Maze::cell(size_t x, size_t y) {

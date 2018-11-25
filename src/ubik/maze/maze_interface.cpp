@@ -76,8 +76,7 @@ Dir choose_best_direction(Directions possible) {
         if (possible & dir)
             return dir;
     logging::printf(50, "[maze] No direction available!\n");
-    vTaskDelay(100);
-    configASSERT(0);
+    return Dir::NONE;
 }
 
 // requires N=0, E=1, S=2, W=3

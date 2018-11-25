@@ -155,11 +155,10 @@ void maze_task(void *) {
 
         maze::Cell cells[maze_size * maze_size];
         StaticStack<maze::Position, max_maze_size * max_maze_size> maze_stack;
-        maze::Maze maze(maze_size, maze_size, cells, maze_stack);
+        maze::Maze maze(maze_size, maze_size, cells, maze_stack, maze::START_POSITION);
         logging::printf(80, "[maze] Size of maze: %d (size of data structures: %d)\n",
                 maze_size, maze_size * maze_size * sizeof(maze::Cell) + sizeof(maze_stack) + sizeof(maze));
 
-        auto current_pos = maze::START_POSITION;
         // auto goal_pos = maze::TargetPosition(maze_size-1, maze_size-1);
         auto goal_pos = maze::TargetPosition(
                 select_with_wheels_int(4, {0, maze_size-1}, maze_size, "[maze] target.x ="),
@@ -169,10 +168,12 @@ void maze_task(void *) {
 
         vTaskDelay(pdMS_TO_TICKS(1000));
         logging::printf(80, "Moving from (%d, %d) to (%.1f, %.1f)\n",
-                current_pos.x, current_pos.y, double(goal_pos.x), double(goal_pos.y));
+                maze.position().x, maze.position().y, double(goal_pos.x), double(goal_pos.y));
 
-        current_pos = maze.go_from_to(current_pos, goal_pos);
-        logging::printf(80, "[maze] Finished. Current position (%d, %d)\n", current_pos.x, current_pos.y);
+        bool success = maze.go_to(goal_pos);
+        logging::printf(100, "[maze] %s Current position (%d, %d)\n",
+                success ? "Finished successfully." : "Could not finish the maze!",
+                maze.position().x, maze.position().y);
 
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
