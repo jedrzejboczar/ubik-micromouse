@@ -11,6 +11,7 @@
 #include "movement/regulator.h"
 #include "movement/controller.h"
 #include "common/distance_sensors.h"
+#include "maze/maze.h"
 
 
 void run();
@@ -47,15 +48,14 @@ void distance_sensors_task(void *) {
 }
 
 
-void movement::Controller::delay(float dt) {
-    vTaskDelay(pdMS_TO_TICKS(1e3f * dt));
-}
 
 void set_target_position_task(void *) {
     vTaskDelay(pdMS_TO_TICKS(500));
 
     using constants::deg2rad;
-    movement::Controller c(100);
+    namespace ctrl = movement::controller;
+
+    ctrl::set_frequency(100);
 
     // select velocities
     system_monitor::lock_button();
@@ -87,18 +87,18 @@ void set_target_position_task(void *) {
                     float a = 0.15;
                     float R = 0.577f * a;
 
-                    c.move_line(a, vel_lin, acc_lin);
-                    c.move_rotate(deg2rad(120), vel_ang, acc_ang);
-                    c.move_line(a, vel_lin, acc_lin, 0);
-                    // c.move_rotate(deg2rad(120), vel_ang, acc_ang);
-                    // c.move_line(a, vel_lin, acc_lin, 0);
-                    // c.move_rotate(deg2rad(120), vel_ang, acc_ang);
+                    ctrl::move_line(a, vel_lin, acc_lin);
+                    ctrl::move_rotate(deg2rad(120), vel_ang, acc_ang);
+                    ctrl::move_line(a, vel_lin, acc_lin, 0);
+                    // ctrl::move_rotate(deg2rad(120), vel_ang, acc_ang);
+                    // ctrl::move_line(a, vel_lin, acc_lin, 0);
+                    // ctrl::move_rotate(deg2rad(120), vel_ang, acc_ang);
 
                     // move on the circle circumscribing the triangle
-                    c.move_rotate(deg2rad(60), vel_ang, acc_ang);
-                    c.move_arc({deg2rad(120) * R, deg2rad(120)}, vel_lin, acc_lin);
+                    ctrl::move_rotate(deg2rad(60), vel_ang, acc_ang);
+                    ctrl::move_arc({deg2rad(120) * R, deg2rad(120)}, vel_lin, acc_lin);
                     // turn back
-                    c.move_rotate(deg2rad(-180 - 120), vel_ang, acc_ang);
+                    ctrl::move_rotate(deg2rad(-180 - 120), vel_ang, acc_ang);
                     break;
                 }
             case EIGHT:
@@ -110,15 +110,15 @@ void set_target_position_task(void *) {
                     int N = 2;
                     float vel_final = 0.3f * vel_lin;
                     // get initial speed
-                    c.move_line(R, vel_lin, acc_lin, vel_final);
+                    ctrl::move_line(R, vel_lin, acc_lin, vel_final);
                     for (int i = 0; i < N; i++) {
-                        c.move_arc({arc_len, -angle}, vel_lin, acc_lin, vel_final);
-                        c.move_line(2 * R, vel_lin, acc_lin, vel_final);
-                        c.move_arc({arc_len, angle}, vel_lin, acc_lin, vel_final);
+                        ctrl::move_arc({arc_len, -angle}, vel_lin, acc_lin, vel_final);
+                        ctrl::move_line(2 * R, vel_lin, acc_lin, vel_final);
+                        ctrl::move_arc({arc_len, angle}, vel_lin, acc_lin, vel_final);
                         if (i < N - 1)
-                            c.move_line(2 * R, vel_lin, acc_lin, vel_final);
+                            ctrl::move_line(2 * R, vel_lin, acc_lin, vel_final);
                         else
-                            c.move_line(R, vel_lin, acc_lin, 0);
+                            ctrl::move_line(R, vel_lin, acc_lin, 0);
                     }
                     break;
                 }
@@ -128,8 +128,8 @@ void set_target_position_task(void *) {
                     float R = 0.15;
                     float angle = deg2rad(360);
                     float arc_len = constants::arc_length(angle, R);
-                    c.move_arc({2*arc_len, 2*angle}, vel_lin, acc_lin);
-                    c.move_arc({-2*arc_len, -2*angle}, vel_lin, acc_lin); // unwind the cables xD
+                    ctrl::move_arc({2*arc_len, 2*angle}, vel_lin, acc_lin);
+                    ctrl::move_arc({-2*arc_len, -2*angle}, vel_lin, acc_lin); // unwind the cables xD
                     break;
                 }
 

@@ -6,4 +6,5 @@ target_sources(${CMAKE_PROJECT_NAME}
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/regulator.cpp"
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/controller.h"
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/controller.cpp"
+    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/controller_interface.cpp"
     )

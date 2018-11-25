@@ -33,16 +33,18 @@ void move_in_direction(Dir dir) {
 
 int main()
 {
-    size = 8;
+    size = 4;
     const float mid = (size - 1) / 2.0;
     auto from = maze::Position(0, 0);
-    auto to = maze::TargetPosition(mid, mid);
+    auto to = maze::TargetPosition(int(mid)+1, int(mid)+1);
+    // auto to = maze::TargetPosition(size-1, size-1);
 
     maze::Cell cells[size * size];
     StaticStack<maze::Position, 64> stack;
     maze::Maze maze(size, size, cells, stack);
 
     // RANDOM MAZE GENERATION
+    srand(time(NULL));
     maze_gen::MazeGenerator generator;
     generator.create(size);
     real_cells = new maze::Cell[size * size];
@@ -65,9 +67,7 @@ int main()
     // RANDOM MAZE GENERATION
 
     maze::Position initial = maze::Position(0, 0);
-    // maze::TargetPosition target = maze::TargetPosition(mid, mid);
-    maze::TargetPosition target = maze::TargetPosition(size, size);
-    maze::Position current = maze.go_from_to(initial, target);
+    maze::Position current = maze.go_from_to(initial, to);
 
-    maze.print(current, maze::Position(target.x, target.y));
+    maze.print(current, maze::Position(to.x, to.y));
 }

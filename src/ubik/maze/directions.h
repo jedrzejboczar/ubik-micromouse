@@ -14,7 +14,7 @@ enum class Dir: uint8_t {
     FIRST = 0
 };
 
-Dir& operator++(Dir& dir) {
+static inline Dir& operator++(Dir& dir) {
     return dir = static_cast<Dir>(static_cast<uint8_t>(dir) + 1);
 }
 
@@ -54,12 +54,12 @@ private:
     Directions(uint8_t dirs): dirs(dirs) {  }
 };
 
-inline Directions operator|(Directions lhs, const Directions& rhs) {
+static inline Directions operator|(Directions lhs, const Directions& rhs) {
   lhs |= rhs;
   return lhs;
-};
+}
 
-inline Directions operator&(Directions lhs, const Directions& rhs) {
+static inline Directions operator&(Directions lhs, const Directions& rhs) {
   lhs &= rhs;
   return lhs;
-};
+}

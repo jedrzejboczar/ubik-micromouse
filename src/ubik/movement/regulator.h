@@ -16,8 +16,7 @@
 #include "motor_control.h"
 #include "pid.h"
 
-namespace movement {
-namespace regulator {
+namespace movement::regulator {
 
 static constexpr float LOOP_FREQUENCY = 1e3;
 
@@ -35,13 +34,4 @@ void set_target(float translation_meters, float rotation_radians);
 // modify the value of current regulation target by given amouts (more practical)
 void update_target_by(float translation_meters, float rotation_radians);
 
-
-} // namespace regulator
-
-
-// regulator.cpp implements movement::update_target_by()
-// this is to interface with controller.h, the function just calls
-// movement::regulator::update_target_by()
-
-
-} // namespace movement
+} // namespace movement::regulator

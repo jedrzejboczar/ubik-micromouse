@@ -6,15 +6,7 @@
 #define TIMING_ENABLED 0
 
 
-namespace movement {
-
-// this is implemented to interface with controller.h
-void update_target_by(float distance_linear, float distance_angular) {
-    regulator::update_target_by(distance_linear, distance_angular);
-}
-
-
-namespace regulator {
+namespace movement::regulator {
 
 // SetPoint of PID regulation
 // keep the value is in encoder ticks for more direct relation to encoder
@@ -179,5 +171,4 @@ static void unlock() {
     configASSERT(could_give);
 }
 
-} // namespace regulator
-} // namespace movement
+} // namespace movement::regulator

@@ -2,6 +2,7 @@ add_subdirectory(common)
 add_subdirectory(logging)
 add_subdirectory(localization)
 add_subdirectory(movement)
+add_subdirectory(maze)
 
 target_sources(${CMAKE_PROJECT_NAME}
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/ubik.cpp"
