@@ -8,7 +8,6 @@
 #include <chrono>
 #endif
 
-
 namespace maze {
 
 Maze::Maze(size_t X, size_t Y, Cell cells[], Stack<Position> &stack):
@@ -84,9 +83,8 @@ void Maze::init_weights_to_target(TargetPosition target) {
     }
 }
 
-// or should use OR?
 void Maze::update_walls(Position pos, Directions walls) {
-    cell(pos).walls = walls;
+    cell(pos).walls |= walls;
 }
 
 bool Maze::is_in_maze(Position pos) const {
@@ -100,7 +98,7 @@ Position Maze::neighbour(Position pos, Dir dir) const {
         case Dir::S: pos.y -= 1; break;
         case Dir::E: pos.x += 1; break;
         case Dir::W: pos.x -= 1; break;
-        default: assert(0); break;
+        default: configASSERT(0); break;
     }
     return pos;
 }

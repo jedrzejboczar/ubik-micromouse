@@ -97,6 +97,7 @@ append_target_flags(${CMAKE_PROJECT_NAME}
     # -Wduplicated-branches # (violated by FreeRTOS tasks.c)
     -Wredundant-decls   # when declaring something twice (STM32HAL)
     -Wwrite-strings       # when converting string constants  (STM32HAL: Error_Handler())
+    -Wno-vla               # disable warnings on variable size arrays
 
     C_FLAGS
     -Wjump-misses-init     # not initializing in swtich

@@ -25,6 +25,8 @@ static SemaphoreHandle_t button_mutex = nullptr;
 // keep track of regulation state, write/read to an int _should_ be atomic
 static bool regulation_state = false;
 
+static bool system_monitor_task_ready = false;
+
 /******************************************************************************/
 
 static bool check_button();
@@ -44,6 +46,10 @@ bool get_regulation_state() {
 }
 
 void lock_button() {
+    // prevent problems when task locks button faster than system monitor
+    // TODO: for this we should use event groups
+    while (!system_monitor_task_ready)
+        vTaskDelay(1);
     // this should always succeed as we wait indefinitelly
     bool taken = xSemaphoreTake(button_mutex, portMAX_DELAY) == pdPASS;
     configASSERT(taken);
@@ -161,10 +167,11 @@ float select_with_wheels(float initial_value, std::pair<float, float> values_ran
     return select_with_wheels_generic(initial_value, values_range,
         change_per_left_wheel_turn, print_prompt, false);
 }
-int select_with_wheels(int initial_value, int n_values,
+
+int select_with_wheels_int(int initial_value, std::pair<int, int> values_range,
         int increments_per_left_wheel_turn, const char *print_prompt)
 {
-    return select_with_wheels_generic(initial_value, {0, n_values},
+    return select_with_wheels_generic(initial_value, values_range,
         increments_per_left_wheel_turn, print_prompt, true);
 }
 
@@ -267,6 +274,7 @@ void system_monitor_task(void *) {
             }
         }
 
+        system_monitor_task_ready = true;
         vTaskDelayUntil(&last_start, pdMS_TO_TICKS(LOOP_PERIOD_MS));
     }
 }

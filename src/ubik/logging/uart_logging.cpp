@@ -1,4 +1,5 @@
 #include "logging.h"
+#include "uart_logging_config.h"
 
 #include <cstring>
 
@@ -34,9 +35,6 @@ static UART_HandleTypeDef &log_uart = huart1;
  * generally for debugging anyway (or at least we call log() to write
  * something when system starts).
  */
-constexpr size_t task_priority = 1;
-constexpr size_t task_stack_size = configMINIMAL_STACK_SIZE;
-constexpr size_t queue_length = 3;
 QueueHandle_t log_queue = nullptr;
 TaskHandle_t log_task = nullptr;
 SemaphoreHandle_t log_guard = nullptr;
@@ -60,14 +58,14 @@ void initialise() {
     if (log_queue != nullptr)
         return;
     // queue and mutex
-    log_queue = xQueueCreate(queue_length, sizeof(Msg));
+    log_queue = xQueueCreate(QUEUE_LENGTH, sizeof(Msg));
     log_guard = xSemaphoreCreateMutex();
     configASSERT(log_queue != nullptr);
     configASSERT(log_guard != nullptr);
     // task
     bool task_created = xTaskCreate(logger_task, "Logging",
-            task_stack_size, nullptr,
-            task_priority, &log_task) == pdPASS;
+            TASK_STACK_SIZE, nullptr,
+            TASK_PRIORITY, &log_task) == pdPASS;
     configASSERT(task_created);
 }
 

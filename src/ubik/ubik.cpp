@@ -12,6 +12,7 @@
 #include "movement/controller.h"
 #include "common/distance_sensors.h"
 #include "maze/maze.h"
+#include "maze/maze_definitions.h"
 
 
 void run();
@@ -76,7 +77,7 @@ void set_target_position_task(void *) {
 
         spi::gpio::update_pins(spi::gpio::LED_RED, spi::gpio::LED_BLUE);
         system_monitor::lock_button();
-        choice = system_monitor::select_with_wheels(choice, COUNT-1, 2 * COUNT, "choice =");
+        choice = system_monitor::select_with_wheels_int(choice, {0, COUNT-1}, 2 * COUNT, "choice =");
         system_monitor::unlock_button();
         spi::gpio::update_pins(spi::gpio::LED_BLUE, spi::gpio::LED_RED);
 
@@ -138,6 +139,46 @@ void set_target_position_task(void *) {
     }
 }
 
+
+void maze_task(void *) {
+    namespace ctrl = movement::controller;
+    using namespace system_monitor;
+
+    // set controller frequency
+    ctrl::set_frequency(100);
+
+    constexpr int max_maze_size = 16;
+
+    while (1) {
+        lock_button();
+        const int maze_size = select_with_wheels_int(4, {1, max_maze_size}, max_maze_size, "[maze] select size =");
+
+        maze::Cell cells[maze_size * maze_size];
+        StaticStack<maze::Position, max_maze_size * max_maze_size> maze_stack;
+        maze::Maze maze(maze_size, maze_size, cells, maze_stack);
+        logging::printf(80, "[maze] Size of maze: %d (size of data structures: %d)\n",
+                maze_size, maze_size * maze_size * sizeof(maze::Cell) + sizeof(maze_stack) + sizeof(maze));
+
+        auto current_pos = maze::START_POSITION;
+        // auto goal_pos = maze::TargetPosition(maze_size-1, maze_size-1);
+        auto goal_pos = maze::TargetPosition(
+                select_with_wheels_int(4, {0, maze_size-1}, maze_size, "[maze] target.x ="),
+                select_with_wheels_int(4, {0, maze_size-1}, maze_size, "[maze] target.y =")
+                );
+        unlock_button();
+
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        logging::printf(80, "Moving from (%d, %d) to (%.1f, %.1f)\n",
+                current_pos.x, current_pos.y, double(goal_pos.x), double(goal_pos.y));
+
+        current_pos = maze.go_from_to(current_pos, goal_pos);
+        logging::printf(80, "[maze] Finished. Current position (%d, %d)\n", current_pos.x, current_pos.y);
+
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}
+
+
 void run() {
     logging::printf_blocking(100, "\n===========================================\n");
     logging::printf_blocking(100, "Initialising system...\n");
@@ -168,16 +209,20 @@ void run() {
             all_created = all_created && result == pdPASS;
         };
 
-    create_task("Setter", 2, set_target_position_task,
-            configMINIMAL_STACK_SIZE * 3, nullptr);
     create_task("SysMonitor", 4, system_monitor::system_monitor_task,
             configMINIMAL_STACK_SIZE * 2, nullptr);
     create_task("Regulator", 5, movement::regulator::regulation_task,
             configMINIMAL_STACK_SIZE * 2, nullptr);
-    create_task("Stats", 1, logging::stats_monitor_task,
-            configMINIMAL_STACK_SIZE * 2, reinterpret_cast<void *>(pdMS_TO_TICKS(10*1000)));
-    create_task("Distance", 3, distance_sensors_task,
-            configMINIMAL_STACK_SIZE * 2, nullptr);
+    // create_task("Stats", 1, logging::stats_monitor_task,
+    //         configMINIMAL_STACK_SIZE * 2, reinterpret_cast<void *>(pdMS_TO_TICKS(10*1000)));
+
+    create_task("Maze", 2, maze_task,
+            configMINIMAL_STACK_SIZE * 6, nullptr);
+
+    // create_task("Setter", 2, set_target_position_task,
+    //         configMINIMAL_STACK_SIZE * 3, nullptr);
+    // create_task("Distance", 3, distance_sensors_task,
+    //         configMINIMAL_STACK_SIZE * 2, nullptr);
 
     configASSERT(all_created);
 

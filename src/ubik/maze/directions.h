@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include <cassert>
+
 
 /*
  * Enum representing geographical direction, that also allows for quite
@@ -9,13 +9,37 @@
  *   for (Dir dir = Dir::FIRST; dir < Dir::COUNT; ++dir) { ... }
  */
 enum class Dir: uint8_t {
-    N = 0, S, E, W,
+    N = 0, E, S, W,
     COUNT,
     FIRST = 0
 };
 
 static inline Dir& operator++(Dir& dir) {
     return dir = static_cast<Dir>(static_cast<uint8_t>(dir) + 1);
+}
+
+/*
+ * Calculates the number of right-angle turns needed to go from 'from' to `to`.
+ * Turning left (e.g. from N to W) is positive.
+ */
+static inline int difference(Dir from, Dir to) {
+    int difference =  static_cast<int>(from) - static_cast<int>(to);
+    if (difference > 2)
+        difference -= 4;
+    else if (difference < -1)
+        difference += 4;
+    return difference;
+}
+
+/*
+ * Increment direction by the given number of turns by right angle. Left is positive.
+ */
+static inline Dir increment(Dir dir, int increment) {
+    int new_dir = static_cast<int>(dir) - increment;
+    // use Python-like modulo (as C modulo is different than in Python)
+    // this should yield currect results (always positive)
+    new_dir = ((new_dir % 4) + 4) % 4;
+    return static_cast<Dir>(new_dir);
 }
 
 
@@ -28,7 +52,7 @@ class Directions {
 public:
     Directions(): dirs(0) {  }
     Directions(Dir dir):
-        dirs(1 << static_cast<uint8_t>(dir)) { assert(dir < Dir::COUNT); }
+        dirs(1 << static_cast<uint8_t>(dir)) { configASSERT(dir < Dir::COUNT); }
 
     operator bool() const {
         return dirs != 0;

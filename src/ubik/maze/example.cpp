@@ -15,7 +15,7 @@ Directions maze::read_walls(maze::Position pos) {
     maze::Cell *cell = &real_cells[pos.y * size + pos.x];
     return cell->walls;
 }
-Dir choose_best_direction(Directions possible) {
+Dir maze::choose_best_direction(Directions possible) {
     if (possible & Dir::N) return Dir::N;
     if (possible & Dir::S) return Dir::S;
     if (possible & Dir::E) return Dir::E;
@@ -23,7 +23,7 @@ Dir choose_best_direction(Directions possible) {
     assert(0);
 }
 
-void move_in_direction(Dir dir) {
+void maze::move_in_direction(Dir dir) {
     std::printf("Moving in direction %s\n",
             dir == Dir::N ? "N" :
             dir == Dir::S ? "S" :

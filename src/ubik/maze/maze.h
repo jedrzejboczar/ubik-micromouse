@@ -4,9 +4,11 @@
 #include <cstdint>
 #include <cstring>
 #include <cmath>
-// #include <cassert> TODO: change assert() to configASSERT
 #include <limits>
 #include <algorithm>
+
+#include "FreeRTOS.h"
+#include "task.h"
 
 #include "stack.h"
 #include "directions.h"

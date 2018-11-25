@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstddef>
-#include <cassert>
+
 
 // interface, allows polimorphic usage of either static or dynamic stack
 template<typename T>
@@ -24,7 +24,7 @@ public:
  * On reaching the limit size it will panic!
  * pop() from empty stack will panic!
  */
-template<typename T, size_t size_limit>
+template<typename T, int size_limit>
 class StaticStack: public Stack<T> {
     int itop;
     T elements[size_limit];
@@ -34,15 +34,15 @@ public:
     }
     virtual void push(T elem) override {
         itop++;
-        assert(itop < size_limit);
+        configASSERT(itop < size_limit);
         elements[itop] = elem;
     }
     virtual T pop() override {
-        assert(itop >= 0);
+        configASSERT(itop >= 0);
         return elements[itop--];
     }
     virtual T top() override {
-        assert(itop >= 0);
+        configASSERT(itop >= 0);
         return elements[itop];
     }
     virtual size_t size() override {

@@ -99,8 +99,8 @@ void stats_monitor_task(void *ticks_to_wait_as_ptr) {
     BaseType_t ticks_to_wait = reinterpret_cast<BaseType_t>(ticks_to_wait_as_ptr);
 
     while (1) {
-        print_stats();
         vTaskDelay(ticks_to_wait);
+        print_stats();
     }
 }
 

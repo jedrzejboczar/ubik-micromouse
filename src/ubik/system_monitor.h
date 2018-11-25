@@ -81,7 +81,7 @@ static constexpr float MIN_PRINTED_DIFFERENCE_RATIO = 0.0005;  // ratio of full 
 float select_with_wheels(float initial_value, std::pair<float, float> values_range,
         float change_per_left_wheel_turn, const char *print_prompt="Selecting...");
 // right wheel increments by 1, always
-int select_with_wheels(int initial_value, int n_values,
+int select_with_wheels_int(int initial_value, std::pair<int, int> values_range,
         int increments_per_left_wheel_turn, const char *print_prompt="Selecting...");
 
 
