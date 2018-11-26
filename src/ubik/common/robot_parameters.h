@@ -7,9 +7,9 @@ namespace constants {
 #define PI                 3.14159265358979f
 #endif
 
-static constexpr float WHEEL_RADIUS        = 0.01626;             // 16.26 mm
+static constexpr float WHEEL_RADIUS        = 0.01600;             // 16.26 mm
 static constexpr float WHEEL_CIRCUMFERENCE = 2*PI * WHEEL_RADIUS; // 0.1022 m
-static constexpr float TURN_RADIUS         = 0.0493;              // 49.3 mm
+static constexpr float TURN_RADIUS         = 0.0475;              // 49.3 mm
 static constexpr float TURN_CIRCUMFERENCE  = 2*PI * TURN_RADIUS;
 static constexpr int   GEAR_RATIO          = 30;                  // 30 shaft truns per wheel turn
 

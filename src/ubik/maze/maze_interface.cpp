@@ -25,7 +25,13 @@ static const char* str(Dir dir) {
     }
 }
 
-
+/*
+ * Example distance sensors readings in different parts of maze:
+ * - [3732  230   46  641  353 3927] - start position (back to wall)
+ * - [3776  297   49  647  456 3926] - middle of cell (walls left, right), cell forward has walls: left, front
+ * - [   2 2615 2023 1916 3825 3925] - middle of cell (walls left, front), wall 2 cells on the right (so invisible)
+ * - [   0  782  335  944 1204 3932] - between two cells, cell last has walls: left, right; cell next has walls: left, front
+ */
 // this only has to add new walls, so we don't have to move
 Directions read_walls(Position pos) {
     const int threshold = 1000;
@@ -90,9 +96,9 @@ Dir choose_best_direction(Directions possible) {
 
 void move_in_direction(Dir dir) {
     const float right_angle = constants::deg2rad(90);
-    const float vel_lin = 0.20;
+    const float vel_lin = 0.25;
     const float acc_lin = 0.20;
-    const float vel_ang = constants::deg2rad(180);
+    const float vel_ang = constants::deg2rad(220);
     const float acc_ang = constants::deg2rad(180);
 
     // check how much we need to turn

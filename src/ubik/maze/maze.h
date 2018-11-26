@@ -121,8 +121,7 @@ public:
     // and must be instantiated somewhere else and be valid as long as Maze.
     Maze(size_t X, size_t Y, Cell cells[], Stack<Position> &stack, Position start_pos);
 
-    // move between two positions and return end position
-    // (Maze doesn't hold current position)
+    // move between two positions
     bool go_to(TargetPosition to);
 
 #if defined(MAZE_TESTING) || PRINT_MAZE == 1

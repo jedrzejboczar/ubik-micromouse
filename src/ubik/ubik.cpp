@@ -148,7 +148,7 @@ void maze_task(void *) {
 
     // show distance sensors readings until button pressed
     lock_button();
-    while (! wait_for_button_press(100)) {
+    while (! wait_for_button_press(pdMS_TO_TICKS(100))) {
         auto readings = distance_sensors::read(spi::gpio::DISTANCE_SENSORS_ALL());
         logging::printf(100, "[sensors] %4d %4d %4d %4d %4d %4d\n",
                 readings.sensor[0],
@@ -177,18 +177,28 @@ void maze_task(void *) {
 
     while (1) {
         lock_button();
+        spi::gpio::update_pins(spi::gpio::LED_BLUE, 0);
         // auto goal_pos = maze::TargetPosition(maze_size-1, maze_size-1);
         auto goal_pos = maze::TargetPosition(
                 select_with_wheels_int(maze_size/2, {0, maze_size-1}, 2*maze_size, "[maze] target.x ="),
                 select_with_wheels_int(maze_size/2, {0, maze_size-1}, 2*maze_size, "[maze] target.y =")
                 );
+        logging::printf(100, "[maze] Moving from (%d, %d) to (%.1f, %.1f)\n[maze] Start?\n",
+                maze.position().x, maze.position().y, double(goal_pos.x), double(goal_pos.y));
+        spi::gpio::update_pins(0, spi::gpio::LED_BLUE);
+        wait_for_button_press(portMAX_DELAY);
         unlock_button();
 
-        logging::printf(80, "[maze] Moving from (%d, %d) to (%.1f, %.1f)\n",
-                maze.position().x, maze.position().y, double(goal_pos.x), double(goal_pos.y));
         vTaskDelay(pdMS_TO_TICKS(2000));
-
         bool success = maze.go_to(goal_pos);
+        logging::printf(100, "[maze] %s Current position (%d, %d)\n",
+                success ? "Finished successfully." : "Could not finish the maze!",
+                maze.position().x, maze.position().y);
+
+        logging::printf(100, "[maze] Moving from (%d, %d) to (%.1f, %.1f)\n",
+                maze.position().x, maze.position().y, double(goal_pos.x), double(goal_pos.y));
+        if (success)
+            success = maze.go_to(maze::START_POSITION);
         logging::printf(100, "[maze] %s Current position (%d, %d)\n",
                 success ? "Finished successfully." : "Could not finish the maze!",
                 maze.position().x, maze.position().y);

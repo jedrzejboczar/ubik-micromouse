@@ -52,8 +52,8 @@ void set_enabled(bool enabled) {
 void regulation_task(void *) {
     // prepare PID regulators
     PID pid_left, pid_right;
-    pid_left .set_params(3e-5, .1e-6/* , .1e-6 */);
-    pid_right.set_params(3e-5, .1e-6/* , .1e-6 */);
+    pid_left .set_params(5e-5, .3e-6/* , .1e-6 */);
+    pid_right.set_params(5e-5, .3e-6/* , .1e-6 */);
 
     // avoid jumps of PV
     localization::reset_wheels_state();

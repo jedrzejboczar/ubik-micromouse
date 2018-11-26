@@ -8,7 +8,7 @@
 
 #include "ubik/common/timing.h"
 
-#define TIMING_ENABLED 1
+#define TIMING_ENABLED 0
 
 
 namespace spi {
