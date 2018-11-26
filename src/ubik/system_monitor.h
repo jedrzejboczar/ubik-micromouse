@@ -25,8 +25,8 @@ static constexpr int MIN_BUTTON_DELAY_MS = 500; // minimum delay between subsequ
 
 
 // voltage & current measurements
-constexpr bool IS_BATTERY_SUPPLY = false;
-constexpr int PRINT_BATTERY_MEASUREMENTS_EVERY = 0 /* 30 */; // every that many loops
+constexpr bool IS_BATTERY_SUPPLY = true;
+constexpr int PRINT_BATTERY_MEASUREMENTS_EVERY = 100 /* 30 */; // every that many loops
 constexpr float MAX_ADC_READING = ((1 << 12) - 1);
 constexpr float VCC = 3.3;
 constexpr float VOLTAGE_RESISTOR_DIVIDER = 10.0 / 32.0;
@@ -37,6 +37,7 @@ constexpr float CURRENT_MEASUREMENT_RESISTOR = 0.1;
 constexpr int N_LIPOL_CELLS = 2;
 constexpr float CRITICAL_VOLTAGE = 3.1 * N_LIPOL_CELLS;
 constexpr float WARING_VOLTAGE = 3.4 * N_LIPOL_CELLS;
+static_assert(WARING_VOLTAGE > CRITICAL_VOLTAGE);
 
 // IIR filter coefficients
 // in fact this variation of: y = a*x + (1-a)*y,

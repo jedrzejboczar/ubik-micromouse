@@ -6,12 +6,17 @@
 #include <iomanip>
 #include <string>
 #include <chrono>
+#elif PRINT_MAZE == 1
+#include "ubik/logging/logging.h"
 #endif
 
 namespace maze {
 
 Maze::Maze(size_t X, size_t Y, Cell cells[], Stack<Position> &stack, Position start_pos):
-    X(X), Y(Y), cells(cells), stack(stack), current_pos(start_pos) { }
+    X(X), Y(Y), cells(cells), stack(stack), current_pos(start_pos)
+{
+    add_borders_walls();
+}
 
 bool Maze::go_to(TargetPosition to) {
     init_weights_to_target(to);
@@ -42,6 +47,8 @@ bool Maze::go_to(TargetPosition to) {
         std::cout << std::string(X * 6, '-') << std::endl;
         print(current_pos, Position(to.x, to.y));
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
+#elif PRINT_MAZE == 1
+        print(current_pos, Position(to.x, to.y));
 #endif
 
         // update current position
@@ -69,6 +76,18 @@ const Cell& Maze::cell(Position pos) const {
 
 size_t Maze::n_cells() const {
     return X * Y;
+}
+
+void Maze::add_borders_walls() {
+    for (size_t x = 0; x < X; x++) {
+        for (size_t y = 0; y < Y; y++) {
+            Directions &walls = cell(x, y).walls;
+            if (x ==   0) walls |= Dir::W;
+            if (y ==   0) walls |= Dir::S;
+            if (x == X-1) walls |= Dir::E;
+            if (y == Y-1) walls |= Dir::N;
+        }
+    }
 }
 
 void Maze::init_weights_to_target(TargetPosition target) {
@@ -193,6 +212,64 @@ void Maze::print(Position current, Position target) {
     }
 
     std::cout << ss.str() << std::endl;
+}
+#elif PRINT_MAZE == 1
+void Maze::print(Position current, Position target) {
+    // calculate the buffer size required
+    int required_size =
+        // horizontal size + \n
+        ( X * 6 + 1 ) *
+        // vertical size = number of lines
+        ( Y * 3 )
+        + 1 + 10; // null byte + safety margin?
+
+    // refuse to print maze if we have to little heap available
+    constexpr int min_free_heap= 300;
+    int available_heap = xPortGetFreeHeapSize();
+    if (required_size > available_heap - min_free_heap) {
+        logging::printf(70, "Not enough heap for printing maze! required=%d\n",
+                required_size);
+        return;
+    }
+
+    // to avoid problems with memory usage, block all logging and print in blocking manner
+    logging::lock();
+    auto msg = logging::Msg::dynamic(required_size);
+
+    // write to the buffer
+    char *buf = msg.as_chars();
+    for (int y = Y-1; y >= 0; --y) {
+        for (int x = 0; x < int(X); x++) {
+            *buf++ = '+';
+            char sep = (cell(x, y).walls & Dir::N) ? '-' : ' ';
+            for (int i = 0; i < 4; i++)
+                *buf++ = sep;
+            *buf++ = '+';
+        }
+        *buf++ = '\n';
+        for (int x = 0; x < int(X); x++) {
+            bool target_now = target.x == x && target.y == y;
+            bool current_now = current.x == x && current.y == y;
+            *buf++ = (cell(x, y).walls & Dir::W) ? '|' : ' ';
+            buf += sprintf(buf, "%3d", cell(x, y).weight);
+            *buf++ = current_now ? '@' : target_now ? '$' : ' ';
+            *buf++ = (cell(x, y).walls & Dir::E) ? '|' : ' ';
+        }
+        *buf++ = '\n';
+        for (int x = 0; x < int(X); x++) {
+            *buf++ = '+';
+            char sep = (cell(x, y).walls & Dir::S) ? '-' : ' ';
+            for (int i = 0; i < 4; i++)
+                *buf++ = sep;
+            *buf++ = '+';
+        }
+        *buf++ = '\n';
+    }
+
+    // print the message and wait some time, last thing we want is
+    // allocating more than one maze printing buffer
+    logging::log_blocking(msg);
+    logging::unlock();
 }
 #endif
 

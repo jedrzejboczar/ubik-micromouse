@@ -19,37 +19,6 @@ void run();
 extern "C" void extern_main(void) { run(); }
 
 
-void distance_sensors_task(void *) {
-    vTaskDelay(pdMS_TO_TICKS(300));
-
-    while(1) {
-#if 0
-        auto readings = distance_sensors::read(spi::gpio::DISTANCE_SENSORS_ALL());
-#else
-        uint8_t sensors = spi::gpio::DISTANCE_SENSORS[0] | spi::gpio::DISTANCE_SENSORS[1]
-            | spi::gpio::DISTANCE_SENSORS[4] | spi::gpio::DISTANCE_SENSORS[5];
-        auto readings = distance_sensors::read( sensors);
-#endif
-
-        // won't always work as expected, but basically, print when not in select_with_wheels()
-        if (! system_monitor::is_button_locked() || system_monitor::get_regulation_state() == true) {
-            logging::printf(100, "%4d %4d %4d %4d %4d %4d\n\n",
-                    readings.sensor[0],
-                    readings.sensor[1],
-                    readings.sensor[2],
-                    readings.sensor[3],
-                    readings.sensor[4],
-                    readings.sensor[5]);
-        }
-
-        vTaskDelay(50);
-    }
-
-    vTaskDelay(portMAX_DELAY);
-}
-
-
-
 void set_target_position_task(void *) {
     vTaskDelay(pdMS_TO_TICKS(500));
 
@@ -140,6 +109,36 @@ void set_target_position_task(void *) {
 }
 
 
+void distance_sensors_task(void *) {
+    vTaskDelay(pdMS_TO_TICKS(300));
+
+    while (1) {
+#if 1
+        auto readings = distance_sensors::read(spi::gpio::DISTANCE_SENSORS_ALL());
+#else
+        uint8_t sensors = spi::gpio::DISTANCE_SENSORS[0] | spi::gpio::DISTANCE_SENSORS[1]
+            | spi::gpio::DISTANCE_SENSORS[4] | spi::gpio::DISTANCE_SENSORS[5];
+        auto readings = distance_sensors::read( sensors);
+#endif
+
+        // won't always work as expected, but basically, print when not in select_with_wheels()
+        if (! system_monitor::is_button_locked() || system_monitor::get_regulation_state() == true) {
+            logging::printf(100, "%4d %4d %4d %4d %4d %4d\n\n",
+                    readings.sensor[0],
+                    readings.sensor[1],
+                    readings.sensor[2],
+                    readings.sensor[3],
+                    readings.sensor[4],
+                    readings.sensor[5]);
+        }
+
+        vTaskDelay(50);
+    }
+
+    vTaskDelay(portMAX_DELAY);
+}
+
+
 void maze_task(void *) {
     namespace ctrl = movement::controller;
     using namespace system_monitor;
@@ -147,35 +146,52 @@ void maze_task(void *) {
     // set controller frequency
     ctrl::set_frequency(100);
 
-    constexpr int max_maze_size = 16;
+    // show distance sensors readings until button pressed
+    lock_button();
+    while (! wait_for_button_press(100)) {
+        auto readings = distance_sensors::read(spi::gpio::DISTANCE_SENSORS_ALL());
+        logging::printf(100, "[sensors] %4d %4d %4d %4d %4d %4d\n",
+                readings.sensor[0],
+                readings.sensor[1],
+                readings.sensor[2],
+                readings.sensor[3],
+                readings.sensor[4],
+                readings.sensor[5]);
+    }
+    unlock_button();
+
+
+    constexpr int MAX_MAZE_SIZE = 16;
+
+    vTaskDelay(10);
+    lock_button();
+    const int maze_size = select_with_wheels_int(4, {1, MAX_MAZE_SIZE}, 2*MAX_MAZE_SIZE, "[maze] select size =");
+
+    maze::Cell cells[maze_size * maze_size];
+    StaticStack<maze::Position, MAX_MAZE_SIZE * MAX_MAZE_SIZE> maze_stack;
+    maze::Maze maze(maze_size, maze_size, cells, maze_stack, maze::START_POSITION);
+
+    logging::printf(80, "[maze] Size of maze: %d (size of data structures: %d)\n",
+            maze_size, maze_size * maze_size * sizeof(maze::Cell) + sizeof(maze_stack) + sizeof(maze));
+    unlock_button();
 
     while (1) {
         lock_button();
-        const int maze_size = select_with_wheels_int(4, {1, max_maze_size}, max_maze_size, "[maze] select size =");
-
-        maze::Cell cells[maze_size * maze_size];
-        StaticStack<maze::Position, max_maze_size * max_maze_size> maze_stack;
-        maze::Maze maze(maze_size, maze_size, cells, maze_stack, maze::START_POSITION);
-        logging::printf(80, "[maze] Size of maze: %d (size of data structures: %d)\n",
-                maze_size, maze_size * maze_size * sizeof(maze::Cell) + sizeof(maze_stack) + sizeof(maze));
-
         // auto goal_pos = maze::TargetPosition(maze_size-1, maze_size-1);
         auto goal_pos = maze::TargetPosition(
-                select_with_wheels_int(4, {0, maze_size-1}, maze_size, "[maze] target.x ="),
-                select_with_wheels_int(4, {0, maze_size-1}, maze_size, "[maze] target.y =")
+                select_with_wheels_int(maze_size/2, {0, maze_size-1}, 2*maze_size, "[maze] target.x ="),
+                select_with_wheels_int(maze_size/2, {0, maze_size-1}, 2*maze_size, "[maze] target.y =")
                 );
         unlock_button();
 
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        logging::printf(80, "Moving from (%d, %d) to (%.1f, %.1f)\n",
+        logging::printf(80, "[maze] Moving from (%d, %d) to (%.1f, %.1f)\n",
                 maze.position().x, maze.position().y, double(goal_pos.x), double(goal_pos.y));
+        vTaskDelay(pdMS_TO_TICKS(2000));
 
         bool success = maze.go_to(goal_pos);
         logging::printf(100, "[maze] %s Current position (%d, %d)\n",
                 success ? "Finished successfully." : "Could not finish the maze!",
                 maze.position().x, maze.position().y);
-
-        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 

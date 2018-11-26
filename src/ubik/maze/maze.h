@@ -7,6 +7,8 @@
 #include <limits>
 #include <algorithm>
 
+#define PRINT_MAZE 1
+
 #if defined(MAZE_TESTING)
 #include <cassert>
 #define configASSERT(x) assert(x)
@@ -123,7 +125,7 @@ public:
     // (Maze doesn't hold current position)
     bool go_to(TargetPosition to);
 
-#if defined(MAZE_TESTING)
+#if defined(MAZE_TESTING) || PRINT_MAZE == 1
     void print(Position current, Position target);
 #endif
 
@@ -143,6 +145,7 @@ private:
     const Cell &cell(Position pos) const;
     size_t n_cells() const;
 
+    void add_borders_walls();
     void init_weights_to_target(TargetPosition target);
     void update_walls(Position pos, Directions walls);
     bool is_in_maze(Position pos) const;

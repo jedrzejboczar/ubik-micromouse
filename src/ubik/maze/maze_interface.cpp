@@ -31,9 +31,14 @@ Directions read_walls(Position pos) {
     const int threshold = 1000;
     Directions walls;
 
-    // add a wall behind us when we start
-    if (pos.x == 0 && pos.y == 0)
+    // TODO: do better than this
+    // initialise our state, when we are in (0, 0)
+    if (pos.x == 0 && pos.y == 0) {
+        // add a wall behind us when we start
         walls |= increment(start_dir, 2);
+        // set current direction to start_dir
+        current_dir = start_dir;
+    }
 
     // sides & front
     uint8_t sensors =

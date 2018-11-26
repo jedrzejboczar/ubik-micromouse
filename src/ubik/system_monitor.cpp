@@ -243,7 +243,7 @@ void system_monitor_task(void *) {
         // check the voltage
         if (filtered_voltage < CRITICAL_VOLTAGE) {
             if (xTaskGetTickCount() - last_critical > pdMS_TO_TICKS(VOLTAGE_WARINGS_PERIOD_MS)) {
-                logging::printf(80, "[# CRITICAL #] Voltage below critical level: %d < %d [mV]\n",
+                logging::printf(80, "[# CRITICAL #] [sys] Voltage below critical level: %d < %d [mV]\n",
                         static_cast<int>(filtered_voltage * 1e3f), static_cast<int>(CRITICAL_VOLTAGE * 1e3f));
                 last_critical = xTaskGetTickCount();
             }
@@ -254,22 +254,28 @@ void system_monitor_task(void *) {
             regulation_on_voltage = true;
             if (filtered_voltage < WARING_VOLTAGE) {
                 if (xTaskGetTickCount() - last_warning > pdMS_TO_TICKS(VOLTAGE_WARINGS_PERIOD_MS)) {
-                    logging::printf(80, "[# WARNING #] Voltage below warning level: %d < %d [mV]\n",
+                    logging::printf(80, "[# WARNING #] [sys] Voltage below warning level: %d < %d [mV]\n",
                         static_cast<int>(filtered_voltage * 1e3f), static_cast<int>(WARING_VOLTAGE * 1e3f));
                     last_warning = xTaskGetTickCount();
                 }
             }
         }
 
+        // turn on/off the warning LED
+        if (filtered_voltage < WARING_VOLTAGE)  // warning OR critical
+            spi::gpio::update_pins(spi::gpio::LED_RED, 0);
+        else
+            spi::gpio::update_pins(0, spi::gpio::LED_RED);
+
         // process the regulation state changes
         update_regulation();
 
         // print current/voltage if requested
         if constexpr (PRINT_BATTERY_MEASUREMENTS_EVERY > 0) {
-            static uint32_t counter = 0;
+            static uint32_t counter = PRINT_BATTERY_MEASUREMENTS_EVERY - 1;
             if (counter++ >= PRINT_BATTERY_MEASUREMENTS_EVERY - 1) {
                 counter = 0;
-                logging::printf(80, "Voltage level: %.3f V   Current level: %.3f A\n",
+                logging::printf(80, "[sys] Voltage level: %.3f V   Current level: %.3f A\n",
                         static_cast<double>(filtered_voltage), static_cast<double>(current));
             }
         }
@@ -339,7 +345,7 @@ static void update_regulation_state(bool force) {
     // atomic read
     bool current_regulation_state = regulation_state;
     if (current_regulation_state != last_state || force) {
-        logging::printf(50, "Regulation %s\n", current_regulation_state ? "ON" : "OFF");
+        logging::printf(50, "[sys] Regulation %s\n", current_regulation_state ? "ON" : "OFF");
         movement::regulator::set_enabled(current_regulation_state);
         last_state = current_regulation_state;
     }
