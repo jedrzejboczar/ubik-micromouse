@@ -145,7 +145,10 @@ bool gpio::update_pins(uint8_t bits_to_set, uint8_t bits_to_reset) {
     new_state |= bits_to_set;
     new_state &= ~(bits_to_reset);
 
-    bool ok = gpio_expander_write3(MCP::CTRL_BYTE_WRITE, MCP::OLAT, new_state);
+    bool ok = true;
+    // avoid unnecessary writes
+    if (new_state != gpioex_port_state)
+        ok = gpio_expander_write3(MCP::CTRL_BYTE_WRITE, MCP::OLAT, new_state);
 
     if (ok)
         gpioex_port_state = new_state;
