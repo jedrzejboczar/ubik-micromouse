@@ -65,10 +65,10 @@ bool is_button_locked() {
     return uxSemaphoreGetCount(button_mutex) == 0;
 }
 
-bool wait_for_button_press(uint32_t max_wait_time_ms) {
+bool wait_for_button_press(uint32_t max_wait_time_ticks) {
     bool button_pressed = false;
     auto start_time = xTaskGetTickCount();
-    while (!button_pressed && xTaskGetTickCount() - start_time < pdMS_TO_TICKS(max_wait_time_ms)) {
+    while (!button_pressed && xTaskGetTickCount() - start_time < max_wait_time_ticks) {
         button_pressed = sampled_check_button();
     }
     return button_pressed;

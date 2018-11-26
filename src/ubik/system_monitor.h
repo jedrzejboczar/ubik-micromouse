@@ -64,9 +64,9 @@ bool is_button_locked();
  * Wait for a specified time until user pressed the button,
  * return false if not pressed.
  * Uses button debouncing, so minimal wait time =
- *     N_BUTTON_MEASUREMENTS * TIME_BETWEEN_MEASUREMENTS_MS
+ *     pdMS_TO_TICKS(N_BUTTON_MEASUREMENTS * TIME_BETWEEN_MEASUREMENTS_MS)
  */
-bool wait_for_button_press(uint32_t max_wait_time_ms);
+bool wait_for_button_press(uint32_t max_wait_time_ticks);
 
 /*
  * Select a value from continuous range from `min_value` to `max_value`, where
