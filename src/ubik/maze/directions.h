@@ -44,6 +44,16 @@ static inline Dir increment(Dir dir, int increment) {
     return static_cast<Dir>(new_dir);
 }
 
+static inline Dir opposite(Dir dir) {
+    switch (dir) {
+        case Dir::N: return Dir::S;
+        case Dir::E: return Dir::W;
+        case Dir::S: return Dir::N;
+        case Dir::W: return Dir::E;
+        default: return Dir::NONE;
+    }
+}
+
 
 /*
  * Represents a set of directions: zero, one or more.

@@ -38,6 +38,8 @@ Directions read_walls(Position pos) {
         walls |= increment(start_dir, 2);
         // set current direction to start_dir
         current_dir = start_dir;
+
+        movement::controller::move_line(0.020, 0.10, 0.05);
     }
 
     // sides & front

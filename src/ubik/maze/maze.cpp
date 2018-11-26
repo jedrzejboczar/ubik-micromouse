@@ -21,6 +21,12 @@ Maze::Maze(size_t X, size_t Y, Cell cells[], Stack<Position> &stack, Position st
 bool Maze::go_to(TargetPosition to) {
     init_weights_to_target(to);
 
+    // TODO: do it better, now it's just brutal force
+    // time estimate: 4x4 maze, 1st -> 288 us, 2nd (going back) -> 1463 us
+    for (int8_t x = 0; x < int8_t(X); x++)
+        for (int8_t y = 0; y < int8_t(Y); y++)
+            flood_fill({x, y});
+
     while (cell(current_pos).weight > 0) {
         // analyze current sensors readings (or from near past)
         update_walls(current_pos, read_walls(current_pos));
@@ -107,6 +113,10 @@ void Maze::init_weights_to_target(TargetPosition target) {
 
 void Maze::update_walls(Position pos, Directions walls) {
     cell(pos).walls |= walls;
+    // update surrounding cells accordingly
+    for (Dir dir = Dir::FIRST; dir < Dir::COUNT; ++dir)
+        if ((walls & dir) && is_in_maze(neighbour(pos, dir)))
+            cell(neighbour(pos, dir)).walls |= opposite(dir);
 }
 
 bool Maze::is_in_maze(Position pos) const {
