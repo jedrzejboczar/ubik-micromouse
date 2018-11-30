@@ -83,6 +83,9 @@ Readings read(uint8_t gpio_ex_sensors) {
     // obtain the mutex
     lock();
 
+    // set the task for following calls to wait_for_notification
+    task_to_notify = xTaskGetCurrentTaskHandle();
+
     bool readings_ok = false;
     const int n_readings = configure_adc_channels(gpio_ex_sensors);
 
@@ -93,11 +96,28 @@ Readings read(uint8_t gpio_ex_sensors) {
             // wait for ADC measurement end
             if (wait_for_notification()) {
 
+                // try to overcome slow SPI problem
+                ds_htim.Instance->ARR = 1000;
+                ds_htim.Instance->CNT = 0;
+                // do not use HAL_TIM_Base_Start to avoid wasting time for function call
+                __HAL_TIM_ENABLE(&ds_htim);
+
                 // turn on required LEDs, remember to always turn them off later!
                 if (spi::gpio::update_pins(gpio_ex_sensors, 0)) {
 
+                    // update_pins() takes huge amount of time (around 75 microseconds)
+                    // writing 3 bytes takes around 51 us, so let's assume that
+                    // the time usage of update_pins() is: 12+51+12 us
+                    // one byte is transfered in ~17 us, gpio-exp pin set time should be negligible
+                    // so, probably, the pin is on after ~12 us (0-24 depending if lock() or unlock() is faster)
+                    // calculate the delay time based on our assumptions, CNT should be ~75
+                    int32_t delay_time_us = LEDS_TURN_ON_WAIT_TIME_US - (ds_htim.Instance->CNT - (51 + 12));
+                    delay_time_us = std::max(int32_t(0), delay_time_us);
+                    // do not use HAL_TIM_Base_Stop to avoid wasting time for function call
+                    __HAL_TIM_DISABLE(&ds_htim);
+
                     // & wait until they fully turn on
-                    bool delay_ok = delay_us(LEDS_TURN_ON_WAIT_TIME_US);
+                    bool delay_ok = delay_us(delay_time_us);
 
                     // measure the light levels registered
                     if (HAL_ADC_Start_DMA(&ds_hadc, reinterpret_cast<uint32_t *>(readings_on), n_readings) == HAL_OK) {
@@ -111,10 +131,16 @@ Readings read(uint8_t gpio_ex_sensors) {
                         spi::gpio::update_pins(0, spi::gpio::DISTANCE_SENSORS_ALL());
                     }
 
+                } else {
+                    // if the call failed, we haven't disabled the timer, so do it
+                    __HAL_TIM_DISABLE(&ds_htim);
                 }
             }
         }
     }
+
+    // clear the current task to be notified
+    task_to_notify = nullptr;
 
     // be sure to release the mutex
     unlock();
@@ -250,17 +276,21 @@ static int configure_adc_channels(uint8_t sensors) {
 }
 
 static bool wait_for_notification() {
-    task_to_notify = xTaskGetCurrentTaskHandle();
+    // task_to_notify must have been set before!
     auto result = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(MAX_ADC_WAIT_TIME_MS));
-    task_to_notify = nullptr;
     bool ok = result != 0;
     return ok;
 }
 
 static bool delay_us(int us) {
+    if (us == 0) return true;
 	ds_htim.Instance->ARR = us;
 	ds_htim.Instance->CNT = 0;
-	bool ok = HAL_TIM_Base_Start_IT(&htim2) == HAL_OK;
+    // do not use HAL to avoid wasting time for function call
+    // bool ok = HAL_TIM_Base_Start_IT(&ds_htim) == HAL_OK;
+    __HAL_TIM_ENABLE_IT(&ds_htim, TIM_IT_UPDATE);
+    __HAL_TIM_ENABLE(&ds_htim);
+    bool ok = wait_for_notification();
     return ok;
 }
 
