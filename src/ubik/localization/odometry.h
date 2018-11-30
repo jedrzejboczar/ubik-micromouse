@@ -21,6 +21,10 @@ namespace localization {
 
 static constexpr int32_t MAX_ENCODER_READING = (1 << 12) - 1;
 
+struct Position {
+    float x, y, theta;
+};
+
 
 void initialise();
 
@@ -44,9 +48,12 @@ bool next_encoders_reading();
 // this returns the raw, internal representation, as it has always the
 // finest resoltion, other function use floats to avoid calculation problems
 std::pair<int32_t, int32_t> get_cumulative_encoder_ticks();
+// returns current position (x, y, theta)
+Position get_current_position();
 
- // Convert from translation/rotation to the total angle of the wheels.
+ // Convert between translation/rotation ant angle of the wheels in encoder ticks.
 std::pair<float, float> convert_to_encoder_ticks(float translation_meters, float rotation_radians);
+std::pair<float, float> convert_to_translation_rotation(float left_angle, float right_angle);
 
 
 

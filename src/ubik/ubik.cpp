@@ -138,10 +138,63 @@ void distance_sensors_task(void *) {
     vTaskDelay(portMAX_DELAY);
 }
 
+float cos_tailor_1q(float x) {
+    return 1
+        - x*x / 2
+        + x*x*x*x / 24
+        - x*x*x*x*x*x / 720
+        + x*x*x*x*x*x*x*x / 40320;
+}
+
+float cos_tailor(float x) {
+    constexpr float two_pi = 2 * PI;
+    constexpr float half_pi = PI/2;
+    x = std::fmod(x, two_pi);
+    if (x < 0)
+        x *= -1;
+    int quadrant = static_cast<int>(x / half_pi);
+    switch (quadrant) {
+        case 0: return cos_tailor_1q(x);
+        case 1: return -cos_tailor_1q(PI - x);
+        case 2: return -cos_tailor_1q(x - PI);
+        case 3: return cos_tailor_1q(two_pi - x);
+        default: return 0;
+    }
+}
+
+void test_sine_cosine() {
+#if 1
+    float trans = 0.001;
+    for (float theta = 0.0; theta < 2*PI; theta += PI/400) {
+        cycles_counter::reset();
+        cycles_counter::start();
+        float delta_x = trans * std::cos(theta);
+        cycles_counter::stop();
+        logging::printf(100, "%12.9f = %8.6f * std::cos(%8.6f), cycles = %d\n",
+                delta_x, trans, theta, cycles_counter::get());
+        vTaskDelay(10);
+    }
+#else
+    float trans = 0.001;
+    for (float theta = 0.0; theta < 2*PI; theta += PI/400) {
+        cycles_counter::reset();
+        cycles_counter::start();
+        float delta_x = trans * cos_tailor(theta);
+        cycles_counter::stop();
+        logging::printf(100, "%12.9f = %8.6f * cos(%8.6f), cycles = %d\n",
+                delta_x, trans, theta, cycles_counter::get());
+        vTaskDelay(10);
+    }
+#endif
+}
 
 void maze_task(void *) {
     namespace ctrl = movement::controller;
     using namespace system_monitor;
+
+    vTaskDelay(300);
+    test_sine_cosine();
+    vTaskDelay(portMAX_DELAY);
 
     // set controller frequency
     ctrl::set_frequency(100);

@@ -1,8 +1,9 @@
 #include "system_monitor.h"
 
-#include "movement/regulator.h"
+#include "ubik/movement/regulator.h"
 #include "ubik/logging/logging.h"
 
+#include "ubik/localization/odometry.h"
 
 namespace system_monitor {
 
@@ -279,6 +280,9 @@ void system_monitor_task(void *) {
                         static_cast<double>(filtered_voltage), static_cast<double>(current));
             }
         }
+
+        // auto pos = localization::get_current_position();
+        // logging::printf(100, "Current position = (%.3f, %.3f, %.3f)\n", pos.x, pos.y, pos.theta);
 
         system_monitor_task_ready = true;
         vTaskDelayUntil(&last_start, pdMS_TO_TICKS(LOOP_PERIOD_MS));
