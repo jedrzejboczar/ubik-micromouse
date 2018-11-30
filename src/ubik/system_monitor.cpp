@@ -281,9 +281,6 @@ void system_monitor_task(void *) {
             }
         }
 
-        // auto pos = localization::get_current_position();
-        // logging::printf(100, "Current position = (%.3f, %.3f, %.3f)\n", pos.x, pos.y, pos.theta);
-
         system_monitor_task_ready = true;
         vTaskDelayUntil(&last_start, pdMS_TO_TICKS(LOOP_PERIOD_MS));
     }

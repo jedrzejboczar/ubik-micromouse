@@ -25,7 +25,7 @@ static Position current_position = {0, 0, 0};
 
 static void lock();
 static void unlock();
-static void update_wheel_position(int32_t &position, int32_t angle, int32_t last_angle);
+static int32_t unwrap_encoder_angle_delta(int32_t angle_delta);
 static void update_global_position(int32_t left_delta, int32_t right_delta);
 
 
@@ -77,15 +77,19 @@ bool next_encoders_reading() {
     if (! readings.right.is_ok())
         readings.right.angle = last_angle_right;
 
-    // accumulate wheel positions and save last angles
     // left wheel readings decreases in forward direction, so negate it
-    update_wheel_position(cumulative_position_left, -readings.left.angle, -last_angle_left);
     // right wheel readings increase in forward direction
-    update_wheel_position(cumulative_position_right, readings.right.angle, last_angle_right);
-
-    // accumulate the global position
     int32_t left_delta = (-readings.left.angle) - (-last_angle_left);
     int32_t right_delta = readings.right.angle - last_angle_right;
+
+    left_delta = unwrap_encoder_angle_delta(left_delta);
+    right_delta = unwrap_encoder_angle_delta(right_delta);
+
+    // accumulate wheel positions and save last angles
+    cumulative_position_left += left_delta;
+    cumulative_position_right += right_delta;
+
+    // accumulate the global position
     update_global_position(left_delta, right_delta);
 
     last_angle_left = readings.left.angle;
@@ -109,6 +113,12 @@ Position get_current_position() {
     auto pos = current_position;
     unlock();
     return pos;
+}
+
+void set_current_position(Position pos) {
+    lock();
+    current_position = pos;
+    unlock();
 }
 
 /*
@@ -146,13 +156,11 @@ std::pair<float, float> convert_to_translation_rotation(float left_angle, float 
     float distance_right_m = n_turns_right * constants::WHEEL_CIRCUMFERENCE;
     // to transaltion/rotation
     float translation_m = (distance_right_m + distance_left_m) / 2;
-    float rotation_rad = constants::arc_length2rotation_angle( (distance_right_m - distance_left_m) / 2 );
+    float rotation_rad = constants::arc_length2rotation_angle( (distance_right_m - distance_left_m) / 2);
     return std::make_pair(translation_m, rotation_rad);
 }
 
-
-static void update_wheel_position(int32_t &position, int32_t angle, int32_t last_angle) {
-    int32_t angle_delta = angle - last_angle;
+static int32_t unwrap_encoder_angle_delta(int32_t angle_delta) {
     // detect the right direction of movement
     // if delta is greater than half turn, we assume it is movement in other direction
     if (std::abs(angle_delta) > MAX_ENCODER_READING / 2) {
@@ -161,20 +169,24 @@ static void update_wheel_position(int32_t &position, int32_t angle, int32_t last
         else
             angle_delta += MAX_ENCODER_READING;
     }
-    // integrate the position delta to obtain cumulative position
-    position += angle_delta;
+    return angle_delta;
 }
 
 static void update_global_position(int32_t left_delta, int32_t right_delta) {
     float translation_m, rotation_rad;
     std::tie(translation_m, rotation_rad) = convert_to_translation_rotation(left_delta, right_delta);
     float theta = current_position.theta;
-    float delta_x = translation_m * arm_cos_f32(theta);
-    float delta_y = translation_m * arm_sin_f32(theta);
+    float delta_x = translation_m * arm_cos_f32(theta); // theta must be in range [0, 2pi]!
+    float delta_y = translation_m * arm_sin_f32(theta); // theta must be in range [0, 2pi]!
     // TODO: trapezoidal integration
     current_position.x += delta_x;
     current_position.y += delta_y;
     current_position.theta += rotation_rad;
+    // wrap angle to [0, 2pi]
+    if (current_position.theta < 0)
+        current_position.theta += 2*PI;
+    else if (current_position.theta >= 2*PI)
+        current_position.theta -= 2*PI;
 }
 
 static void lock() {

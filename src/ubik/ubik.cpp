@@ -190,6 +190,7 @@ void maze_task(void *) {
         wait_for_button_press(portMAX_DELAY);
         unlock_button();
 
+        localization::set_current_position({0, 0, PI/2});
         vTaskDelay(pdMS_TO_TICKS(2000));
         bool success = maze.go_to(goal_pos);
         logging::printf(100, "[maze] %s Current position (%d, %d)\n",

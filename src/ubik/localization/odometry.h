@@ -50,6 +50,7 @@ bool next_encoders_reading();
 std::pair<int32_t, int32_t> get_cumulative_encoder_ticks();
 // returns current position (x, y, theta)
 Position get_current_position();
+void set_current_position(Position pos);
 
  // Convert between translation/rotation ant angle of the wheels in encoder ticks.
 std::pair<float, float> convert_to_encoder_ticks(float translation_meters, float rotation_radians);
