@@ -1,6 +1,6 @@
 #include "odometry.h"
 
-#include <cmath>
+#include <arm_math.h>
 
 namespace localization {
 
@@ -169,8 +169,8 @@ static void update_global_position(int32_t left_delta, int32_t right_delta) {
     float translation_m, rotation_rad;
     std::tie(translation_m, rotation_rad) = convert_to_translation_rotation(left_delta, right_delta);
     float theta = current_position.theta;
-    float delta_x = translation_m * std::cos(theta);
-    float delta_y = translation_m * std::sin(theta);
+    float delta_x = translation_m * arm_cos_f32(theta);
+    float delta_y = translation_m * arm_sin_f32(theta);
     // TODO: trapezoidal integration
     current_position.x += delta_x;
     current_position.y += delta_y;

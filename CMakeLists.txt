@@ -36,6 +36,7 @@ add_compile_definitions(
     STM32F103xB
     USE_HAL_DRIVER
     # USE_FULL_LL_DRIVER
+    ARM_MATH_CM3  # for arm_math.h
     )
 
 # main target
@@ -54,9 +55,8 @@ openocd_add_gdb_target(${CMAKE_PROJECT_NAME})
 add_subdirectory(src)
 
 # add libraries
-target_link_libraries(${CMAKE_PROJECT_NAME}
-    # again, prevent linker from removing some symbols, because it then seems to add some from standard library
-    PRIVATE  mpaland_printf)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE  mpaland_printf)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/libarm_cortexM3l_math.a")
 
 # if we built cube as library it has to be linked after adding all sources
 if(CUBE_AS_STATIC_LIB)
@@ -65,6 +65,7 @@ if(CUBE_AS_STATIC_LIB)
         # https://stackoverflow.com/questions/30355013/linking-with-static-library-not-equivalent-to-linking-with-its-objects
         PRIVATE "-Wl,--whole-archive" cube "-Wl,--no-whole-archive")
 endif()
+
 
 # set language standards and compilation flags
 set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY C_STANDARD 11)
