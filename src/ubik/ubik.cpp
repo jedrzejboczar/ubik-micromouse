@@ -123,7 +123,7 @@ void distance_sensors_task(void *) {
 
         // won't always work as expected, but basically, print when not in select_with_wheels()
         if (! system_monitor::is_button_locked() || system_monitor::get_regulation_state() == true) {
-            logging::printf(100, "%4d %4d %4d %4d %4d %4d\n\n",
+            logging::printf(100, "%4d %4d %4d %4d %4d %4d\n",
                     readings.sensor[0],
                     readings.sensor[1],
                     readings.sensor[2],
@@ -138,18 +138,31 @@ void distance_sensors_task(void *) {
     vTaskDelay(portMAX_DELAY);
 }
 
-void maze_task(void *) {
-    namespace ctrl = movement::controller;
-    using namespace system_monitor;
+void gather_distance_sensors_plot_data(float distance_to_move, float distance_resolution) {
+    float distance_moved = 0;
+    float vel_lin = 0.05;
+    float acc_lin = 0.20;
 
-    vTaskDelay(300);
+    // measure
+    auto readings = distance_sensors::read(spi::gpio::DISTANCE_SENSORS[1] | spi::gpio::DISTANCE_SENSORS[4]);
+    logging::printf(30, "%f %d %d\n", distance_moved, readings.sensor[1], readings.sensor[4]);
 
-    // set controller frequency
-    ctrl::set_frequency(100);
+    while (distance_moved < distance_to_move) {
+        // move
+        movement::controller::move_line(-distance_resolution, vel_lin, acc_lin, vel_lin);
+        distance_moved += distance_resolution;
 
-    // show distance sensors readings until button pressed
-    lock_button();
-    while (! wait_for_button_press(pdMS_TO_TICKS(100))) {
+        // measure
+        readings = distance_sensors::read(spi::gpio::DISTANCE_SENSORS[1] | spi::gpio::DISTANCE_SENSORS[4]);
+        logging::printf(30, "%f %d %d\n", distance_moved, readings.sensor[1], readings.sensor[4]);
+    }
+    // stop gracefully
+    movement::controller::move_line(-distance_resolution, vel_lin, acc_lin, 0);
+}
+
+void show_distance_sensors_until_button() {
+    system_monitor::lock_button();
+    while (! system_monitor::wait_for_button_press(pdMS_TO_TICKS(100))) {
         auto readings = distance_sensors::read(spi::gpio::DISTANCE_SENSORS_ALL());
         logging::printf(100, "[sensors] %4d %4d %4d %4d %4d %4d\n",
                 readings.sensor[0],
@@ -159,8 +172,12 @@ void maze_task(void *) {
                 readings.sensor[4],
                 readings.sensor[5]);
     }
-    unlock_button();
+    system_monitor::unlock_button();
+}
 
+void maze_solver() {
+    using namespace system_monitor;
+    namespace ctrl = movement::controller;
 
     constexpr int MAX_MAZE_SIZE = 16;
 
@@ -207,6 +224,19 @@ void maze_task(void *) {
     }
 }
 
+void main_task(void *) {
+    vTaskDelay(300);
+
+    // gather_distance_sensors_plot_data(0.50, 0.005);
+
+    show_distance_sensors_until_button();
+    // maze_solver();
+
+    while(1) {
+        vTaskDelay(portMAX_DELAY);
+    }
+}
+
 
 void run() {
     logging::printf_blocking(100, "\n===========================================\n");
@@ -223,6 +253,7 @@ void run() {
     localization::initialise(); // encoders odomoetry
     movement::motors::initialise(); // motor control
     movement::regulator::initialise(); // PID regulator
+    movement::controller::set_frequency(200);
 
     /*** Create FreeRTOS tasks ************************************************/
 
@@ -245,7 +276,7 @@ void run() {
     // create_task("Stats", 1, logging::stats_monitor_task,
     //         configMINIMAL_STACK_SIZE * 2, reinterpret_cast<void *>(pdMS_TO_TICKS(10*1000)));
 
-    create_task("Maze", 2, maze_task,
+    create_task("Main", 2, main_task,
             configMINIMAL_STACK_SIZE * 6, nullptr);
 
     // create_task("Setter", 2, set_target_position_task,

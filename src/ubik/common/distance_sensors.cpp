@@ -1,5 +1,6 @@
 #include "distance_sensors.h"
 
+#include <cmath>
 
 namespace distance_sensors {
 
@@ -153,7 +154,48 @@ void notify_from_isr(bool &should_yield) {
         vTaskNotifyGiveFromISR(task_to_notify, reinterpret_cast<BaseType_t*>(&should_yield));
 }
 
+/*
+ *
+ * Model for the relation: distance(ADC_value)
+ * Found experimentally based on measurements for front sensors (easy to measure by mobing back).
+ *    D = a * x^b + c + d / (x + e)
+ * Results: works quite bad, and is too complex.
+ */
+Distances Readings::to_distances() {
+    Distances distances;
+    constexpr float params[] = {-0.7097688, 0.0540759, 1.10880182, 4.98670003, 50.91384991};
+    for (int i = 0; i < n_elements(sensor); i++) {
+        if (sensor[i] < 0)
+            distances.sensor[i] = -1;
+        else {
+#if 1
+            float adc = sensor[i];
+            float dist = 0;
+            if (adc < 2)
+                dist = 1.0; // we cannot see further than 1 meter anyway
+            else if (adc >= 3600)
+                dist = 0;
+            else
+                dist =
+                    params[0] * std::pow(adc, params[1]) + params[2] + params[3] / (adc + params[4]);
+            distances.sensor[i] = dist;
+#endif
+        }
+    }
+    return distances;
+}
 
+void Readings::to_linearised(float linearised[6]) {
+    for (int i = 0; i < n_elements(sensor); i++) {
+        if (sensor[i] < 0)
+            linearised[i] = -1;
+        else {
+            // simple linearisation in the range from 600 to 3500
+            float val = 248.5 / (sensor[i] + 1057) - 0.04;
+            linearised[i] = std::max(0.0f, val);
+        }
+    }
+}
 
 // for each sensor, starting from sensor 0, check if it is in `sensors`, if so,
 // then set this sensor as the next channel number; save the number of channels and return it

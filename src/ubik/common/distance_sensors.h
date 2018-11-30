@@ -21,7 +21,8 @@ struct Distances {
 };
 struct Readings {
     int16_t sensor[6];
-    Distances to_distances(); // TODO
+    Distances to_distances(); // this doesn't make sense, it's too complex
+    void to_linearised(float linearised[6]);
 };
 
 
