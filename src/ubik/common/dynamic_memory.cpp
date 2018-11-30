@@ -1,4 +1,5 @@
 #include <cstddef>
+#include <new>
 
 #include "FreeRTOS.h"
 
