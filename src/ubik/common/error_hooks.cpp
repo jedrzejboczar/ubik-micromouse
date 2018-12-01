@@ -7,6 +7,8 @@
 #include "task.h"
 
 #include "ubik/logging/logging.h"
+#include "ubik/movement/motor_control.h"
+#include "ubik/common/spi_devices.h"
 
 extern "C" {
 
@@ -14,12 +16,17 @@ extern "C" {
 void dumb_delay(uint32_t ms);
 // use red LED to indicate error
 void blinkErrorLED(int n_times, int delay_ms);
+// disable everything! does not use interrupts or RTOS
+void red_emergency_button();
+
 
 void vApplicationStackOverflowHook( TaskHandle_t xTask, signed char *pcTaskName ) {
     (void) xTask;
     (void) pcTaskName;
 
     taskDISABLE_INTERRUPTS();
+
+    red_emergency_button();
 
     uint8_t buf[250];
     auto msg = logging::Msg::from_static(buf);
@@ -35,6 +42,8 @@ void vApplicationStackOverflowHook( TaskHandle_t xTask, signed char *pcTaskName 
 
 void vApplicationMallocFailedHook( void ) {
     taskDISABLE_INTERRUPTS();
+
+    red_emergency_button();
 
     uint8_t buf[250];
     auto msg = logging::Msg::from_static(buf);
@@ -52,6 +61,8 @@ void vApplicationMallocFailedHook( void ) {
 
 void vApplicationConfigAssertFailedHook(const char *file, int line) {
     taskDISABLE_INTERRUPTS();
+
+    red_emergency_button();
 
     uint8_t buf[250];
     auto msg = logging::Msg::from_static(buf);
@@ -120,6 +131,39 @@ void blinkErrorLED(int n_times, int delay_ms) {
         dumb_delay(delay_ms);
     }
 }
+
+extern SPI_HandleTypeDef hspi2;
+void red_emergency_button() {
+
+    // first of all disable motors
+    movement::motors::set_enabled(false);
+
+    // disable all GPIO expander pins
+    // as we cannot use RTOS here, we have to write the communication ourselves
+    // for simplicity we just copy here all the "private" code from spi_devices.cpp
+    // we have to write 0x00 to the OLAT register to set all pins to LOW
+
+    // abort any possibly ongoing transfers
+    HAL_GPIO_WritePin(GPIO_Exp_Cs_GPIO_Port, GPIO_Exp_Cs_Pin, GPIO_PIN_SET);
+    HAL_SPI_Abort(&hspi2);
+
+    // configure the correct SPI mode
+    while ((hspi2.Instance->CR1 & SPI_SR_BSY) != 0) {}
+    hspi2.Instance->CR1 &= ~SPI_CR1_SPE;
+    uint32_t reg = hspi2.Instance->CR1;
+    reg &= ~SPI_CR1_CPOL; // idle low
+    reg &= ~SPI_CR1_CPHA; // 1st edge
+    hspi2.Instance->CR1 = reg;
+    uint8_t tmp = 0;
+    HAL_SPI_Transmit(&hspi2, &tmp, 1, 1);
+
+    // CTRL_BYTE_WRITE, OLAT, 0x00
+    uint8_t buffer[] = {0x40, 0x0a, 0x00};
+    HAL_GPIO_WritePin(GPIO_Exp_Cs_GPIO_Port, GPIO_Exp_Cs_Pin, GPIO_PIN_RESET);
+    HAL_SPI_Transmit(&hspi2, buffer, sizeof(buffer), 5);
+    HAL_GPIO_WritePin(GPIO_Exp_Cs_GPIO_Port, GPIO_Exp_Cs_Pin, GPIO_PIN_SET);
+}
+
 
 
 } // extern "C"
