@@ -114,31 +114,34 @@ void move_arc(Vec2 distance, float vel_desired, float acc, float vel_final) {
         _vel_desired.lin = vel_desired;
 #endif
 
-    // calculate new linear velocity
-    float vel_new_lin = update_velocity(_vel_current.lin, vel_desired, acc);
-    // calculate the angular velocity based on linear velocity
-    float vel_new_ang = vel_new_lin * k;
+        // calculate new linear velocity
+        float vel_new_lin = update_velocity(_vel_current.lin, vel_desired, acc);
+        // calculate the angular velocity based on linear velocity
+        float vel_new_ang = vel_new_lin * k;
 
-    // calculate the distance traveled using trapezoidal integration
-    // (which should be "ideal" for constant accelerations)
-    // trapezoidal rule: (a+b) / 2 * h
-    float distance_traveled_lin = (_vel_current.lin + vel_new_lin) / 2 * _dt;
-    float distance_traveled_ang = (_vel_current.ang + vel_new_ang) / 2 * _dt;
+        // modify the velocities according to the correction policy
+        apply_correction(_dt);
 
-    // reduce remaining distance
-    _dist_remaining.lin -= distance_traveled_lin;
-    _dist_remaining.ang -= distance_traveled_ang;
+        // calculate the distance traveled using trapezoidal integration
+        // (which should be "ideal" for constant accelerations)
+        // trapezoidal rule: (a+b) / 2 * h
+        float distance_traveled_lin = (_vel_current.lin + vel_new_lin) / 2 * _dt;
+        float distance_traveled_ang = (_vel_current.ang + vel_new_ang) / 2 * _dt;
 
-    // update regulator target
-    update_target_by(
-            direction_lin * distance_traveled_lin,
-            direction_ang * distance_traveled_ang);
+        // reduce remaining distance
+        _dist_remaining.lin -= distance_traveled_lin;
+        _dist_remaining.ang -= distance_traveled_ang;
 
-    // save the new velocity as current
-    _vel_current = {vel_new_lin, vel_new_ang};
+        // update regulator target
+        update_target_by(
+                direction_lin * distance_traveled_lin,
+                direction_ang * distance_traveled_ang);
 
-    // wait
-    delay(_dt);
+        // save the new velocity as current
+        _vel_current = {vel_new_lin, vel_new_ang};
+
+        // wait
+        delay(_dt);
 
     }
 
@@ -222,6 +225,9 @@ void move_lin_ang(Vec2 distance, Vec2 vel_desired, Vec2 acc, Vec2 vel_final) {
         // calculate new velocity
         float vel_new_lin = update_velocity(_vel_current.lin, vel_desired.lin, acc.lin);
         float vel_new_ang = update_velocity(_vel_current.ang, vel_desired.ang, acc.ang);
+
+        // modify the velocities according to the correction policy
+        apply_correction(_dt);
 
         // calculate the distance traveled using trapezoidal integration
         // (which should be "ideal" for constant accelerations)

@@ -180,6 +180,16 @@ void notify_from_isr(bool &should_yield) {
         vTaskNotifyGiveFromISR(task_to_notify, reinterpret_cast<BaseType_t*>(&should_yield));
 }
 
+
+bool Readings::ok(uint8_t gpio_ex_sensors) const {
+    // check only the requested sensors
+    for (int ds_num = 0; ds_num < 6; ds_num++)
+        if ((gpio_ex_sensors & spi::gpio::DISTANCE_SENSORS[ds_num]) != 0)
+            if (sensor[ds_num] < 0)
+                return false;
+    return true;
+}
+
 /*
  *
  * Model for the relation: distance(ADC_value)
@@ -187,7 +197,7 @@ void notify_from_isr(bool &should_yield) {
  *    D = a * x^b + c + d / (x + e)
  * Results: works quite bad, and is too complex.
  */
-Distances Readings::to_distances() {
+Distances Readings::to_distances() const {
     Distances distances;
     constexpr float params[] = {-0.7097688, 0.0540759, 1.10880182, 4.98670003, 50.91384991};
     for (int i = 0; i < n_elements(sensor); i++) {
@@ -211,7 +221,7 @@ Distances Readings::to_distances() {
     return distances;
 }
 
-void Readings::to_linearised(float linearised[6]) {
+void Readings::to_linearised(float linearised[6]) const {
     for (int i = 0; i < n_elements(sensor); i++) {
         if (sensor[i] < 0)
             linearised[i] = -1;

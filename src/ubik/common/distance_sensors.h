@@ -21,8 +21,9 @@ struct Distances {
 };
 struct Readings {
     int16_t sensor[6];
-    Distances to_distances(); // this doesn't make sense, it's too complex
-    void to_linearised(float linearised[6]);
+    bool ok(uint8_t gpio_ex_sensors) const; // true if the given sensors are non-negative
+    Distances to_distances() const; // this doesn't make sense, it's too complex
+    void to_linearised(float linearised[6]) const;
 };
 
 

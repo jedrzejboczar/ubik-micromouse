@@ -85,7 +85,8 @@ static float select_with_wheels_generic(float initial_value, std::pair<float, fl
     float last_value = std::numeric_limits<float>::max();
     float value = initial_value;
     int32_t initial_left, initial_right;
-    std::tie(initial_left, initial_right) = localization::get_cumulative_encoder_ticks();
+    std::tie(initial_left, initial_right) = localization::odometry::get_cumulative_encoder_ticks();
+    auto initial_pos = localization::odometry::get_current_position();
 
     // disable regulation to allow free wheel turning
     bool last_regulation_state = regulation_state;
@@ -96,14 +97,14 @@ static float select_with_wheels_generic(float initial_value, std::pair<float, fl
 
         // get the current ticks
         int32_t left, right;
-        std::tie(left, right) = localization::get_cumulative_encoder_ticks();
+        std::tie(left, right) = localization::odometry::get_cumulative_encoder_ticks();
 
         // correct according to initial positions
         left = initial_left - left;
         right = initial_right - right;
 
         // calculate current value
-        const float ticks_per_turn = localization::MAX_ENCODER_READING * constants::GEAR_RATIO;
+        const float ticks_per_turn = localization::odometry::MAX_ENCODER_READING * constants::GEAR_RATIO;
         const float change_per_right_wheel_turn = /* is_int ? 1 : */
             change_per_left_wheel_turn/SELECTION_RIGHT_WHEEL_RESOLUTION_RATIO;
         value = initial_value
@@ -145,6 +146,9 @@ static float select_with_wheels_generic(float initial_value, std::pair<float, fl
 
         }
     }
+
+    // restore position
+    localization::odometry::set_current_position(initial_pos);
 
     // re-enable regulation
     regulation_state = last_regulation_state;

@@ -2,7 +2,7 @@
 
 #include <arm_math.h>
 
-namespace localization {
+namespace localization::odometry {
 
 // guard access to the internal variables of the module
 static SemaphoreHandle_t internal_mutex = nullptr;
@@ -202,4 +202,4 @@ static void unlock() {
 }
 
 
-} // namespace localization
+} // namespace localization::odometry

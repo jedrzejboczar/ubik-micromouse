@@ -10,6 +10,7 @@
 #include "localization/odometry.h"
 #include "movement/regulator.h"
 #include "movement/controller.h"
+#include "movement/correction.h"
 #include "common/distance_sensors.h"
 #include "maze/maze.h"
 #include "maze/maze_definitions.h"
@@ -207,7 +208,7 @@ void maze_solver() {
         wait_for_button_press(portMAX_DELAY);
         unlock_button();
 
-        localization::set_current_position({0, 0, PI/2});
+        localization::odometry::set_current_position({0, 0, PI/2});
         vTaskDelay(pdMS_TO_TICKS(2000));
         bool success = maze.go_to(goal_pos);
         logging::printf(100, "[maze] %s Current position (%d, %d)\n",
@@ -229,8 +230,26 @@ void main_task(void *) {
 
     // gather_distance_sensors_plot_data(0.50, 0.005);
 
-    show_distance_sensors_until_button();
+    // show_distance_sensors_until_button();
     // maze_solver();
+
+    movement::correction::side_walls::calibrate();
+    logging::printf(50, "Calibration complete.\n");
+    system_monitor::lock_button();
+    system_monitor::wait_for_button_press(portMAX_DELAY);
+    system_monitor::unlock_button();
+
+    movement::correction::side_walls::set_enabled(true);
+    movement::controller::move_line(0.30, 0.20, 0.10);
+
+
+
+    while (1) {
+        movement::controller::apply_correction(1.0f / 200);
+        vTaskDelay(pdMS_TO_TICKS(1000 / 200));
+    }
+
+    // localization::correction::set_enabled(false);
 
     while(1) {
         vTaskDelay(portMAX_DELAY);
@@ -250,7 +269,7 @@ void run() {
     spi::initialise(); // encoders & gpio expander
     distance_sensors::initialise(); // distance sensors' ADC
     system_monitor::initialise(); // battery and regulation control
-    localization::initialise(); // encoders odomoetry
+    localization::odometry::initialise(); // encoders odomoetry
     movement::motors::initialise(); // motor control
     movement::regulator::initialise(); // PID regulator
     movement::controller::set_frequency(200);

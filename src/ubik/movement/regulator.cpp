@@ -56,7 +56,7 @@ void regulation_task(void *) {
     pid_right.set_params(5e-5, .3e-6/* , .1e-6 */);
 
     // avoid jumps of PV
-    localization::reset_wheels_state();
+    localization::odometry::reset_wheels_state();
 
     // prepare loop timing
     auto last_start = xTaskGetTickCount();
@@ -72,9 +72,9 @@ void regulation_task(void *) {
 #endif
 
         // perform next encoders reading and get the current process variable values
-        localization::next_encoders_reading();
+        localization::odometry::next_encoders_reading();
         int32_t position_left, position_right;
-        std::tie(position_left, position_right) = localization::get_cumulative_encoder_ticks();
+        std::tie(position_left, position_right) = localization::odometry::get_cumulative_encoder_ticks();
 
         // lock variables, do not wait! (as regulation may be faster than single rtos tick)
         bool taken = xSemaphoreTake(state_mutex, 0) == pdPASS;
@@ -140,7 +140,7 @@ void regulation_task(void *) {
 void set_target(float translation_meters, float rotation_radians) {
     float ticks_left, ticks_right;
     std::tie(ticks_left, ticks_right)
-        = localization::convert_to_encoder_ticks(translation_meters, rotation_radians);
+        = localization::odometry::convert_to_encoder_ticks(translation_meters, rotation_radians);
 
     lock();
     set_point_left = ticks_left;
@@ -151,7 +151,7 @@ void set_target(float translation_meters, float rotation_radians) {
 void update_target_by(float translation_meters, float rotation_radians) {
     float ticks_left, ticks_right;
     std::tie(ticks_left, ticks_right)
-        = localization::convert_to_encoder_ticks(translation_meters, rotation_radians);
+        = localization::odometry::convert_to_encoder_ticks(translation_meters, rotation_radians);
 
     lock();
     set_point_left += ticks_left;

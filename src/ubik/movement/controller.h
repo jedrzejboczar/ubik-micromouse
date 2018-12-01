@@ -17,6 +17,7 @@ namespace movement::controller {
  */
 void update_target_by(float distance_linear, float distance_angular);
 void delay(float dt);
+void apply_correction(float dt);
 
 
 /* Simple struct for storing both linear and angluar motion data.  */

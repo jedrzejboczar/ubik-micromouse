@@ -17,7 +17,7 @@
  */
 
 
-namespace localization {
+namespace localization::odometry {
 
 static constexpr int32_t MAX_ENCODER_READING = (1 << 12) - 1;
 
@@ -58,6 +58,6 @@ std::pair<float, float> convert_to_translation_rotation(float left_angle, float 
 
 
 
-} // namespace localization
+} // namespace localization::odometry
 
 
