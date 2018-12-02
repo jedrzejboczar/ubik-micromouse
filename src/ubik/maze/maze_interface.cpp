@@ -45,7 +45,7 @@ Directions read_walls(Position pos) {
         // set current direction to start_dir
         current_dir = start_dir;
 
-        movement::controller::move_line(0.020, 0.10, 0.05);
+        // movement::controller::move_line(0.020, 0.10, 0.05);
     }
 
     // sides & front
@@ -107,12 +107,12 @@ void move_in_direction(Dir dir) {
     logging::printf(80, "[maze] Moving in direction %s (turn = %d)\n", str(dir), turn);
 
     if (turn != 0) {
-        movement::controller::move_rotate(turn * right_angle, vel_ang, acc_ang);
+        // movement::controller::move_rotate(turn * right_angle, vel_ang, acc_ang);
         current_dir = dir;
     }
 
     // move to the next cell
-    movement::controller::move_line(CELL_EDGE_LENGTH, vel_lin, acc_lin);
+    // movement::controller::move_line(CELL_EDGE_LENGTH, vel_lin, acc_lin);
 }
 
 
