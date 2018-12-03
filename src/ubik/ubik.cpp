@@ -127,10 +127,38 @@ void main_task(void *) {
     system_monitor::wait_for_button_press(portMAX_DELAY);
     system_monitor::unlock_button();
 
-    movement::controller::move(new movement::Line(0.5, 0.3, 0.1, 0));
-    movement::controller::move(new movement::Rotate(PI, PI, PI, 0));
-    movement::controller::move(new movement::Line(0.5, 0.3, 0.1, 0));
-    movement::controller::move(new movement::Arc({ 0.5, PI }, 0.3, 0.1, 0));
+
+    // movement::correction::side_walls::calibrate();
+    // movement::correction::side_walls::set_enabled(true);
+
+    using namespace movement;
+
+    controller::become_owner();
+
+    // controller::MoveId moves_sequence[] = {
+    //     controller::move(Line(0.5, 0.3, 0.1, 0)),
+    //     controller::move(Rotate(PI, PI, PI, 0)),
+    //     controller::move(Line(0.5, 0.3, 0.1, 0)),
+    //     controller::move(Arc({ 0.5, PI }, 0.3, 0.1, 0))
+    // };
+    controller::MoveId moves_sequence[4];
+    moves_sequence[0] = controller::move(Line(0.5, 0.3, 0.1, 0));
+    moves_sequence[1] = controller::move(Rotate(PI, PI, PI, 0));
+    moves_sequence[2] = controller::move(Line(0.5, 0.3, 0.1, 0));
+    moves_sequence[3] = controller::move(Arc({ 0.5, PI }, 0.3, 0.1, 0));
+
+    controller::wait_until_finished(moves_sequence[1]);
+    logging::printf(50, "Rotation finished (id=%d)\n", moves_sequence[1]);
+    controller::wait_until_finished(moves_sequence[2]);
+    logging::printf(50, "Second line finished (id=%d)\n", moves_sequence[2]);
+    controller::wait_until_finished(moves_sequence[0]);
+    logging::printf(50, "First line has already been finished (id=%d)\n", moves_sequence[0]);
+    controller::wait_until_finished(moves_sequence[3]);
+    logging::printf(50, "Arc finished (id=%d)\n", moves_sequence[3]);
+
+    // movement::correction::side_walls::set_enabled(false);
+
+    logging::printf(50, "FINISHED\n");
 
 
 
@@ -155,6 +183,7 @@ void run() {
     localization::odometry::initialise(); // encoders odomoetry
     movement::motors::initialise(); // motor control
     movement::regulator::initialise(); // PID regulator
+    movement::controller::initialise(); // moves queue
 
     /*** Create FreeRTOS tasks ************************************************/
 

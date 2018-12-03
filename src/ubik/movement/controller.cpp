@@ -61,62 +61,116 @@ public:
 
 namespace movement::controller {
 
+/*
+ * We pass a move with its ID to the queue and return this ID from move().
+ * Doing so we can then wait for this ID to be finished.
+ * Move 0 is used for the moment when no move has been sent yet.
+ * The first actual move ID is 1.
+ */
+struct MoveWithId {
+    MoveId id;
+    AnyMove move;
+};
+
+constexpr MoveId first_move_id = 1;
+static MoveId next_move_id = first_move_id;
+static MoveId last_finished_move_id = 0;
 
 
-// temporary, this should be in controller_task
-static Move *current_move = nullptr;
+static QueueHandle_t moves_queue = nullptr;
+static TaskHandle_t caller_task = nullptr;
 
-// TODO: it's a temporary implementation
-void move(Move *m) {
-    configASSERT(m != nullptr);
-    configASSERT(current_move == nullptr);
+void initialise() {
+    moves_queue = xQueueCreate(MOVES_QUEUE_LENGTH, sizeof(MoveWithId));
+    configASSERT(moves_queue != nullptr);
+}
 
-    current_move = m;
-    while (current_move != nullptr)
-        vTaskDelay(10);
+// TODO: are these two thread safe? like 100%? probably not...
+// succeeds only if there is no owner
+void become_owner() {
+    configASSERT(caller_task == nullptr);
+    caller_task = xTaskGetCurrentTaskHandle();
+}
+void release() {
+    configASSERT(caller_task != nullptr);
+    caller_task = nullptr;
+}
+
+
+MoveId move(AnyMove &&next_move) {
+    // only one task can use controller API
+    auto current_task = xTaskGetCurrentTaskHandle();
+    configASSERT(current_task == caller_task);
+
+    // create the data to be sent
+    MoveId id = next_move_id++;
+    // MoveWithId data = {next_move_id++, std::forward<AnyMove>(next_move)};
+    MoveWithId data = {id, next_move};
+
+    // should always succeed
+    bool success = xQueueSend(moves_queue, &data, portMAX_DELAY) == pdPASS;
+    configASSERT(success);
+
+    return id;
+}
+
+void wait_until_finished(MoveId id) {
+    // assert that any move has been already added
+    configASSERT(next_move_id > first_move_id);
+    // will exit instantly if the id is lower
+    while (id > last_finished_move_id)
+        vTaskDelay(5);
 }
 
 void controller_task(void *) {
     constexpr float dt = 1.0f / LOOP_FREQUENCY;
 
     TrajectoryGenerator trajectory;
-    bool initialised = false;
 
     // velocity -> position
     Integrator corr_integrator_lin, corr_integrator_ang;
     // position -> delta_position
     Pair corr_last_position = {0, 0};
 
+    // For now I don't have a better idea, this just works (because
+    // TrajectoryGenerator will ignore moves with 0 distance).
+    // We could redefine AnyMove to std::variant<std::monostate, Line, ...>,
+    // but that kinda sucks, as user can then pass empty variants.
+    MoveId current_move_id = 0;
+    MoveWithId move_requested = {current_move_id, Line(0, 0, 0, 0)};
+
     auto last_start = xTaskGetTickCount();
     while (1) {
 
-        // update position from current move it it exists
-        if (current_move != nullptr) {
-            // initialise next move  if needed
-            if (!initialised) {
-                logging::printf(50, "Initialising move\n");
-                initialised = true;
-                current_move->initialise_generator(trajectory);
-            }
+        // if we finished the move try to get the next one
+        if (trajectory.has_finished() && last_finished_move_id != current_move_id) {
+            last_finished_move_id = current_move_id;
+            logging::printf(100, "Finished move %d\n", current_move_id);
+        }
 
+        if (trajectory.has_finished() && xQueueReceive(moves_queue, &move_requested, 0) == pdPASS) {
+            logging::printf(100, "Starting %d...\n", move_requested.id);
+            current_move_id = move_requested.id;
+            // initialise the next move
+            std::visit([&trajectory](auto &move) { move.initialise_generator(trajectory); },
+                    move_requested.move);
+        }
+
+
+        // if the move is ongoing (and ignore the first "artificial" move)
+        if (!trajectory.has_finished() && current_move_id > 0) {
             // calculate next generator output
             float delta_pos = trajectory.next_position_delta(dt);
 
             // get the position updated according to the logic of this move
-            Pair position_update = current_move->convert_position(delta_pos);
+            Pair position_update = std::visit(
+                    [&delta_pos](auto &move) { return move.convert_position(delta_pos); },
+                    move_requested.move);
+
             // update regulator set-point
             std::apply(regulator::update_target_by, position_update);
         }
 
-        // check if we should prepare for next move
-        if (current_move != nullptr && trajectory.has_finished()) {
-            logging::printf(50, "Move finished\n");
-            delete current_move;
-            current_move = nullptr;
-            initialised = false;
-        }
-
-#if 0
         // apply correction independently
         Pair correction_vel = correction::calculate_correction_velocities();
         Pair position = {
@@ -127,8 +181,9 @@ void controller_task(void *) {
             position.first - corr_last_position.first};
         corr_last_position = position;
         // update regulator set-point TODO: do both in one call
-        std::apply(regulator::update_target_by, position_delta);
-#endif
+        // std::apply(regulator::update_target_by, position_delta);
+        // if (position_delta.first != 0 || position_delta.second != 0)
+            // logging::printf(60, "corr = %12.6f %12.6f\n", position_delta.first, position_delta.second);
 
         // keep oncstant frequency
         vTaskDelayUntil(&last_start, pdMS_TO_TICKS(1000 / LOOP_FREQUENCY));

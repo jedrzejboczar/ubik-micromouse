@@ -13,6 +13,7 @@
 namespace movement::controller {
 
 constexpr float LOOP_FREQUENCY = 100;
+static constexpr size_t MOVES_QUEUE_LENGTH = 5;
 
 /*
  * WARNING:
@@ -21,9 +22,21 @@ constexpr float LOOP_FREQUENCY = 100;
  * angular in one moment)
  */
 
+typedef uint32_t MoveId;
 
-// TODO: avoid dynamic allocation
-void move(Move *m);
+void initialise();
+
+// only one task can use the controller
+// first acquire it, if we need to pass ownership, then use release()
+// but this is not bullet-proof at this moment
+// also, errors hit hard - configASSERT is used
+// this is because probably there should be only one task adding moves anyway
+// what would happen if many tasks could control movements? probably something bad
+void become_owner();
+void release();
+
+MoveId move(AnyMove &&next_move);
+void wait_until_finished(MoveId id);
 void controller_task(void *);
 
 
