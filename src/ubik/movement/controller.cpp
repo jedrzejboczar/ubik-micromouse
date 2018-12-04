@@ -142,22 +142,20 @@ void controller_task(void *) {
     auto last_start = xTaskGetTickCount();
     while (1) {
 
-        // if we finished the move try to get the next one
+        // if we finished update the "global" variable
         if (trajectory.has_finished() && last_finished_move_id != current_move_id) {
             last_finished_move_id = current_move_id;
-            logging::printf(100, "Finished move %d\n", current_move_id);
         }
 
+        // if the current move is finished, then try to get the next one
         if (trajectory.has_finished() && xQueueReceive(moves_queue, &move_requested, 0) == pdPASS) {
-            logging::printf(100, "Starting %d...\n", move_requested.id);
             current_move_id = move_requested.id;
-            // initialise the next move
+            // initialise the received move
             std::visit([&trajectory](auto &move) { move.initialise_generator(trajectory); },
                     move_requested.move);
         }
 
-
-        // if the move is ongoing (and ignore the first "artificial" move)
+        // if the move is ongoing, process next step (also test to ignore the first "artificial" move)
         if (!trajectory.has_finished() && current_move_id > 0) {
             // calculate next generator output
             float delta_pos = trajectory.next_position_delta(dt);

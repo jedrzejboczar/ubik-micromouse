@@ -134,18 +134,12 @@ void main_task(void *) {
     using namespace movement;
 
     controller::become_owner();
-
-    // controller::MoveId moves_sequence[] = {
-    //     controller::move(Line(0.5, 0.3, 0.1, 0)),
-    //     controller::move(Rotate(PI, PI, PI, 0)),
-    //     controller::move(Line(0.5, 0.3, 0.1, 0)),
-    //     controller::move(Arc({ 0.5, PI }, 0.3, 0.1, 0))
-    // };
-    controller::MoveId moves_sequence[4];
-    moves_sequence[0] = controller::move(Line(0.5, 0.3, 0.1, 0));
-    moves_sequence[1] = controller::move(Rotate(PI, PI, PI, 0));
-    moves_sequence[2] = controller::move(Line(0.5, 0.3, 0.1, 0));
-    moves_sequence[3] = controller::move(Arc({ 0.5, PI }, 0.3, 0.1, 0));
+    controller::MoveId moves_sequence[] = {
+        controller::move(Line(0.5, 0.3, 0.1, 0)),
+        controller::move(Rotate(PI, PI, PI, 0)),
+        controller::move(Line(0.5, 0.3, 0.1, 0)),
+        controller::move(Arc({ 0.5, PI }, 0.3, 0.1, 0))
+    };
 
     controller::wait_until_finished(moves_sequence[1]);
     logging::printf(50, "Rotation finished (id=%d)\n", moves_sequence[1]);
