@@ -1,64 +1,5 @@
 #include "controller.h"
 
-/*
- * Class for numerical integration of a time signal.
- * Uses the trapeziodal rule to increase the accurency.
- */
-class Integrator {
-    float output;
-    float last_value;
-    bool should_reset_state = false;
-
-public:
-    Integrator(float initial_state=0, float last_value=0) {
-        reset(initial_state, last_value);
-    }
-
-    void reset(float initial_state=0, float last_value=0) {
-        this->output = initial_state;
-        this->last_value = last_value;
-    }
-
-    // calculate the next value of output
-    float next(float current_value, float dt) {
-
-        // trapezoidal rule: (a+b) / 2 * h
-        output += (current_value + last_value) / 2 * dt;
-        last_value = current_value;
-
-        return output;
-    }
-};
-
-// // NOT MY CPP-FU LEVEL
-// // this wont' work because we cannot convert pair<float, float> to array<float, 2>
-// Integrators<2> corr_vel_integrator;
-// position_correction = corr_vel_integrator.next(correction_vel, dt);
-// template<size_t N>
-// class Integrators {
-//     typedef std::array<float, N> float_array_t;
-//     std::array<Integrator, N> ints;
-// public:
-//     Integrators(float_array_t initial_state={0}, float_array_t last_value={0}) {
-//         reset(initial_state, last_value);
-//     }
-//
-//     void reset(float_array_t initial_state={0}, float_array_t last_value={0}) {
-//         for (int i = 0; i < N; i++)
-//             ints[i].reset(initial_state[i], last_value[i]);
-//     }
-//
-//     // calculate the next value of output
-//     float_array_t next(float_array_t current_value, float dt) {
-//         float_array_t output;
-//         for (int i = 0; i < N; i++)
-//             output[i] = ints[i].next(current_value[i], dt);
-//         return output;
-//     }
-// };
-
-
-
 namespace movement::controller {
 
 /*
@@ -125,12 +66,8 @@ void wait_until_finished(MoveId id) {
 void controller_task(void *) {
     constexpr float dt = 1.0f / LOOP_FREQUENCY;
 
+    // a base for generating trajectory
     TrajectoryGenerator trajectory;
-
-    // velocity -> position
-    Integrator corr_integrator_lin, corr_integrator_ang;
-    // position -> delta_position
-    Pair corr_last_position = {0, 0};
 
     // For now I don't have a better idea, this just works (because
     // TrajectoryGenerator will ignore moves with 0 distance).
@@ -141,6 +78,8 @@ void controller_task(void *) {
 
     auto last_start = xTaskGetTickCount();
     while (1) {
+        // used to apply both updates in one call to update_target_by()
+        Pair final_position_update = {0, 0};
 
         // if we finished update the "global" variable
         if (trajectory.has_finished() && last_finished_move_id != current_move_id) {
@@ -165,23 +104,18 @@ void controller_task(void *) {
                     [&delta_pos](auto &move) { return move.convert_position(delta_pos); },
                     move_requested.move);
 
-            // update regulator set-point
-            std::apply(regulator::update_target_by, position_update);
+            // store the update
+            final_position_update.first += position_update.first;
+            final_position_update.second += position_update.second;
         }
 
-        // apply correction independently
-        Pair correction_vel = correction::calculate_correction_velocities();
-        Pair position = {
-            corr_integrator_lin.next(correction_vel.first, dt),
-            corr_integrator_ang.next(correction_vel.second, dt)};
-        Pair position_delta = {
-            position.first - corr_last_position.first,
-            position.second - corr_last_position.second};
-        corr_last_position = position;
-        // update regulator set-point TODO: do both in one call
-        std::apply(regulator::update_target_by, position_delta);
-        if (position_delta.first != 0 || position_delta.second != 0)
-            logging::printf(60, "corr = %12.6f %12.6f\n", position_delta.first, position_delta.second);
+        // apply correction independently of the main moves controller
+        Pair correction_update = correction::next_position_delta(dt);
+        final_position_update.first += correction_update.first;
+        final_position_update.second += correction_update.second;
+
+        // update regulator set-point
+        std::apply(regulator::update_target_by, final_position_update);
 
         // keep oncstant frequency
         vTaskDelayUntil(&last_start, pdMS_TO_TICKS(1000 / LOOP_FREQUENCY));

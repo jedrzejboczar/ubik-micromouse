@@ -130,9 +130,9 @@ constexpr auto SENSORS = spi::gpio::DISTANCE_SENSORS[LEFT] | spi::gpio::DISTANCE
 constexpr int16_t LEFT_MIN = 1000;
 constexpr int16_t RIGHT_MIN = 1000;
 
-constexpr float GAIN_LIN = 0.5;
-static const float max_vel_lin = 0.4;
-constexpr float GAIN_ANG = 0.5;
+constexpr float GAIN_LIN = 0.7;
+static const float max_vel_lin = 0.3;
+constexpr float GAIN_ANG = 0.7;
 static const float max_vel_ang = constants::deg2rad(270);
 
 static bool enabled = false;
@@ -203,8 +203,9 @@ static void update(const ds::Readings &readings, float &vel_lin, float &vel_ang)
 } // namespace front_walls
 
 
+std::pair<float, float> next_position_delta(float dt) {
+    static Integrator i_lin, i_ang;
 
-std::pair<float, float> calculate_correction_velocities() {
     // check which sensors we have to read
     uint8_t sensors = 0;
     if (side_walls::enabled)
@@ -225,10 +226,8 @@ std::pair<float, float> calculate_correction_velocities() {
     // logging::printf(200, "v_lin = %12f, v_ang = %12f\n",
     //         vel_lin, vel_ang);
 
-    return std::make_pair(vel_lin, vel_ang);
+    return std::make_pair(i_lin.next_as_delta(vel_lin, dt), i_ang.next_as_delta(vel_ang, dt));
 }
-
-
 
 
 } // namespace movement::correction

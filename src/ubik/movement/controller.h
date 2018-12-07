@@ -10,7 +10,6 @@
 #include "regulator.h"
 #include "correction.h"
 
-
 /*
  * Controller for executing moves on the robot.
  * It also updates set-point according to current correction policies.
