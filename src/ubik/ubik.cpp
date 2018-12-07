@@ -131,8 +131,8 @@ void main_task(void *) {
 
     // movement::correction::side_walls::calibrate();
     // movement::correction::side_walls::set_enabled(true);
-    movement::correction::front_walls::calibrate();
-    movement::correction::front_walls::set_enabled(true);
+    movement::correction::front_walls.calibrate();
+    movement::correction::front_walls.set_enabled(true);
 
     // controller::become_owner();
     // controller::MoveId moves_sequence[] = {
