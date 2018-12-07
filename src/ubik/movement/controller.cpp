@@ -176,12 +176,12 @@ void controller_task(void *) {
             corr_integrator_ang.next(correction_vel.second, dt)};
         Pair position_delta = {
             position.first - corr_last_position.first,
-            position.first - corr_last_position.first};
+            position.second - corr_last_position.second};
         corr_last_position = position;
         // update regulator set-point TODO: do both in one call
-        // std::apply(regulator::update_target_by, position_delta);
-        // if (position_delta.first != 0 || position_delta.second != 0)
-            // logging::printf(60, "corr = %12.6f %12.6f\n", position_delta.first, position_delta.second);
+        std::apply(regulator::update_target_by, position_delta);
+        if (position_delta.first != 0 || position_delta.second != 0)
+            logging::printf(60, "corr = %12.6f %12.6f\n", position_delta.first, position_delta.second);
 
         // keep oncstant frequency
         vTaskDelayUntil(&last_start, pdMS_TO_TICKS(1000 / LOOP_FREQUENCY));

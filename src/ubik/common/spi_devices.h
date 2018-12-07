@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstddef>
 #include "as5045.h"
 #include "macros.h"
 
@@ -59,6 +60,7 @@ static constexpr uint8_t DISTANCE_SENSORS_ALL() {
     for (uint8_t b: DISTANCE_SENSORS) bits |= b;
     return bits;
 }
+static constexpr size_t N_DISTANCE_SENSORS = n_elements(DISTANCE_SENSORS);
 static_assert(DISTANCE_SENSORS_ALL() == 0b00111111);
 
 } // namespace gpio

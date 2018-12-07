@@ -127,34 +127,29 @@ void main_task(void *) {
     system_monitor::wait_for_button_press(portMAX_DELAY);
     system_monitor::unlock_button();
 
+    using namespace movement;
 
     // movement::correction::side_walls::calibrate();
     // movement::correction::side_walls::set_enabled(true);
+    movement::correction::front_walls::calibrate();
+    movement::correction::front_walls::set_enabled(true);
 
-    using namespace movement;
-
-    controller::become_owner();
-    controller::MoveId moves_sequence[] = {
-        controller::move(Line(0.5, 0.3, 0.1, 0)),
-        controller::move(Rotate(PI, PI, PI, 0)),
-        controller::move(Line(0.5, 0.3, 0.1, 0)),
-        controller::move(Arc({ 0.5, PI }, 0.3, 0.1, 0))
-    };
-
-    controller::wait_until_finished(moves_sequence[1]);
-    logging::printf(50, "Rotation finished (id=%d)\n", moves_sequence[1]);
-    controller::wait_until_finished(moves_sequence[2]);
-    logging::printf(50, "Second line finished (id=%d)\n", moves_sequence[2]);
-    controller::wait_until_finished(moves_sequence[0]);
-    logging::printf(50, "First line has already been finished (id=%d)\n", moves_sequence[0]);
-    controller::wait_until_finished(moves_sequence[3]);
-    logging::printf(50, "Arc finished (id=%d)\n", moves_sequence[3]);
-
-    // movement::correction::side_walls::set_enabled(false);
-
-    logging::printf(50, "FINISHED\n");
-
-
+    // controller::become_owner();
+    // controller::MoveId moves_sequence[] = {
+    //     controller::move(Line(0.5, 0.3, 0.1, 0)),
+    //     controller::move(Rotate(PI, PI, PI, 0)),
+    //     controller::move(Line(0.5, 0.3, 0.1, 0)),
+    //     controller::move(Arc({ 0.5, PI }, 0.3, 0.1, 0))
+    // };
+    //
+    // controller::wait_until_finished(moves_sequence[1]);
+    // logging::printf(50, "Rotation finished (id=%d)\n", moves_sequence[1]);
+    // controller::wait_until_finished(moves_sequence[2]);
+    // logging::printf(50, "Second line finished (id=%d)\n", moves_sequence[2]);
+    // controller::wait_until_finished(moves_sequence[0]);
+    // logging::printf(50, "First line has already been finished (id=%d)\n", moves_sequence[0]);
+    // controller::wait_until_finished(moves_sequence[3]);
+    // logging::printf(50, "Arc finished (id=%d)\n", moves_sequence[3]);
 
     while(1) {
         vTaskDelay(portMAX_DELAY);
