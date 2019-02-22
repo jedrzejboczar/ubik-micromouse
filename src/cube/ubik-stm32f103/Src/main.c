@@ -116,7 +116,7 @@ int main(void)
   /* Configure the system clock */
   SystemClock_Config();
 
-  /* USER CODE BEGIN SysInit */
+   /* USER CODE BEGIN SysInit */
 
   /* Disable SysTick before it shoots!
    *
@@ -662,7 +662,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   if (htim->Instance == TIM1) {
     HAL_IncTick();
   }
-  /* USER CODE BEGIN Callback 1 */
+   /* USER CODE BEGIN Callback 1 */
 
   extern void callback_timer_period_elapsed(TIM_HandleTypeDef *htim);
   callback_timer_period_elapsed(htim);

@@ -90,7 +90,7 @@ bool SideWallsCorrector::perform_calibration() {
     return true;
 }
 
-void SideWallsCorrector::update(const distance_sensors::Readings &readings, float &vel_lin, float &vel_ang) {
+void SideWallsCorrector::update(const distance_sensors::Readings &readings, float &, float &vel_ang) {
     if (readings.sensor[LEFT] < LEFT_MIN || readings.sensor[RIGHT] < RIGHT_MIN)
         return;
 
