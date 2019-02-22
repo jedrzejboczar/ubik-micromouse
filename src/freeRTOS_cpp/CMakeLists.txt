@@ -1,6 +1,0 @@
-target_sources(${CMAKE_PROJECT_NAME}
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/task_cpp.h
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/lockable.h
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/mutex.h
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/lambda.h
-    )
