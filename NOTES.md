@@ -40,3 +40,8 @@ SPI has no DMA available.
 - DMA1 Channel5 - USART1 RX - logging RX                   - low priority
 - DMA1 Channel6 - I2C1 TX   - IMU TX                       - high priority, because of I2C1-TIM3 conflict
 - DMA1 Channel7 - I2C1 RX   - IMU RX                       - high priority, because of I2C1-TIM3 conflict
+
+# Distance sensors
+
+New measurements are located in the main repo: tests/length_sensors/measured_value/ and tests/length_sensors/turn_on_off_time/.
+While testing, resistors near phototransistors of sensors 0 and 6 have been replaced (from 1.8k to 360Ohm). This is to allow for distinguishing distances at closer range when we measure side walls.
