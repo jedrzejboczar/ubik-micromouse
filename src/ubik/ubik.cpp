@@ -14,6 +14,7 @@
 #include "common/distance_sensors.h"
 #include "maze/maze.h"
 #include "maze/maze_definitions.h"
+#include "maze/maze_wanderer.h"
 
 
 void run();
@@ -60,12 +61,14 @@ void maze_solver() {
     using namespace system_monitor;
     namespace ctrl = movement::controller;
 
+    // Select maze size
     constexpr int MAX_MAZE_SIZE = 16;
 
     vTaskDelay(10);
     lock_button();
     const int maze_size = select_with_wheels_int(4, {1, MAX_MAZE_SIZE}, 2*MAX_MAZE_SIZE, "[maze] select size =");
 
+    // Initialise required structures
     maze::Cell cells[maze_size * maze_size];
     StaticStack<maze::Position, MAX_MAZE_SIZE * MAX_MAZE_SIZE> maze_stack;
     maze::Maze maze(maze_size, maze_size, cells, maze_stack, maze::START_POSITION);
@@ -74,7 +77,10 @@ void maze_solver() {
             maze_size, maze_size * maze_size * sizeof(maze::Cell) + sizeof(maze_stack) + sizeof(maze));
     unlock_button();
 
+    // Loop forever, each time performing a single pass from (0, 0) to given target and back
     while (1) {
+
+        // Select the target using wheels
         lock_button();
         spi::gpio::update_pins(spi::gpio::LED_BLUE, 0);
         // auto goal_pos = maze::TargetPosition(maze_size-1, maze_size-1);
@@ -88,20 +94,44 @@ void maze_solver() {
         wait_for_button_press(portMAX_DELAY);
         unlock_button();
 
-        localization::odometry::set_current_position({0, 0, PI/2});
+        // Prepare to explore maze
+        // wait for a moment until we put the robot with back to a wall
         vTaskDelay(pdMS_TO_TICKS(2000));
+        maze::wanderer::set_enabled(true);
+        maze::wanderer::prepare_starting_from_wall_behind();
+        localization::odometry::set_current_position({0, 0, PI/2});
+
+        // Run the exploration
         bool success = maze.go_to(goal_pos);
         logging::printf(100, "[maze] %s Current position (%d, %d)\n",
                 success ? "Finished successfully." : "Could not finish the maze!",
                 maze.position().x, maze.position().y);
 
-        logging::printf(100, "[maze] Moving from (%d, %d) to (%.1f, %.1f)\n",
-                maze.position().x, maze.position().y, double(goal_pos.x), double(goal_pos.y));
-        if (success)
+        // Move back to start if exploration succeeded
+        if (success) {
+            logging::printf(100, "[maze] Moving from (%d, %d) to (%.1f, %.1f)\n",
+                    maze.position().x, maze.position().y, double(maze::START_POSITION.x), double(maze::START_POSITION.y));
             success = maze.go_to(maze::START_POSITION);
-        logging::printf(100, "[maze] %s Current position (%d, %d)\n",
-                success ? "Finished successfully." : "Could not finish the maze!",
-                maze.position().x, maze.position().y);
+            logging::printf(100, "[maze] %s Current position (%d, %d)\n",
+                    success ? "Finished successfully." : "Could not finish the maze!",
+                    maze.position().x, maze.position().y);
+        }
+
+        maze::wanderer::set_enabled(false);
+    }
+}
+
+void front_wall_follower() {
+    logging::printf(20, "Start?\n");
+    system_monitor::lock_button();
+    system_monitor::wait_for_button_press(portMAX_DELAY);
+    system_monitor::unlock_button();
+
+    movement::correction::front_walls.calibrate();
+    movement::correction::front_walls.set_enabled(true);
+
+    while(1) {
+        vTaskDelay(portMAX_DELAY);
     }
 }
 
@@ -109,31 +139,12 @@ void main_task(void *) {
     vTaskDelay(300);
 
     // gather_distance_sensors_plot_data(0.50, 0.005);
-
-    // show_distance_sensors_until_button();
+    show_distance_sensors_until_button();
+    front_wall_follower();
     // maze_solver();
 
-    // movement::correction::side_walls::calibrate();
-    // logging::printf(50, "Calibration complete.\n");
-    // system_monitor::lock_button();
-    // system_monitor::wait_for_button_press(portMAX_DELAY);
-    // system_monitor::unlock_button();
+    // using namespace movement;
     //
-    // movement::correction::side_walls::set_enabled(true);
-    // movement::controller::move_line(0.30, 0.20, 0.10);
-
-    logging::printf(20, "Start?\n");
-    system_monitor::lock_button();
-    system_monitor::wait_for_button_press(portMAX_DELAY);
-    system_monitor::unlock_button();
-
-    using namespace movement;
-
-    // movement::correction::side_walls::calibrate();
-    // movement::correction::side_walls::set_enabled(true);
-    movement::correction::front_walls.calibrate();
-    movement::correction::front_walls.set_enabled(true);
-
     // controller::become_owner();
     // controller::MoveId moves_sequence[] = {
     //     controller::move(Line(0.5, 0.3, 0.1, 0)),

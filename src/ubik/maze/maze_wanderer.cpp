@@ -1,5 +1,14 @@
+/**
+ * @file maze_wanderer.cpp
+ * @brief The actual movement control in the maze
+ * @author Jędrzej Boczar
+ * @version 0.0.1
+ * @date 2019-02-22
+ */
 #include "FreeRTOS.h"
 #include "task.h"
+
+#include "maze_wanderer.h"
 
 #include "maze.h"
 #include "maze_definitions.h"
@@ -10,20 +19,45 @@
 #include "ubik/logging/logging.h"
 
 
-namespace maze {
+namespace maze::wanderer {
 
-static constexpr Dir start_dir = Dir::N;
-static Dir current_dir = start_dir;
+using namespace movement;
 
-static const char* str(Dir dir) {
-    switch (dir) {
-        case Dir::N: return "N";
-        case Dir::S: return "S";
-        case Dir::E: return "E";
-        case Dir::W: return "W";
-        default: return "!";
-    }
+
+/// We need to keep track of the direction as maze solver doesn't care
+static Dir current_dir = Dir::N;
+static bool enabled = false;
+
+static void not_enabled_warning() {
+    logging::printf(60, "[WARNING] [maze] Maze walker not enabled, cannot prepare!\n");
 }
+
+
+void set_enabled(bool _enabled) {
+    enabled = _enabled;
+}
+
+void prepare_starting_from_wall_behind() {
+    if (!enabled) {
+        not_enabled_warning();
+        return;
+    }
+
+    // calibrate sensors to the walls at sides while we are at the middle
+    correction::side_walls.calibrate();
+    // correction::side_walls.set_enabled(true);
+
+    // calibrate front sensors by carrefully turning to the wall
+    controller::move(Rotate(constants::RIGHT_ANGLE, VEL_ANG_LOW, ACC_ANG_LOW, 0));
+    correction::front_walls.calibrate();
+    controller::move(Rotate(-constants::RIGHT_ANGLE, VEL_ANG_LOW, ACC_ANG_LOW, 0));
+
+    // move away from the wall that we have behind to reach center of the cell
+    controller::move(Line(DISTANCE_MOVE_AWAY_FROM_WALL, VEL_LIN_LOW, ACC_LIN_LOW, 0));
+}
+
+
+/*** Implementation of maze interface functions *******************************/
 
 /*
  * Example distance sensors readings in different parts of maze:
@@ -32,21 +66,9 @@ static const char* str(Dir dir) {
  * - [   2 2615 2023 1916 3825 3925] - middle of cell (walls left, front), wall 2 cells on the right (so invisible)
  * - [   0  782  335  944 1204 3932] - between two cells, cell last has walls: left, right; cell next has walls: left, front
  */
-// this only has to add new walls, so we don't have to move
 Directions read_walls(Position pos) {
     const int threshold = 1000;
     Directions walls;
-
-    // TODO: do better than this
-    // initialise our state, when we are in (0, 0)
-    if (pos.x == 0 && pos.y == 0) {
-        // add a wall behind us when we start
-        walls |= increment(start_dir, 2);
-        // set current direction to start_dir
-        current_dir = start_dir;
-
-        // movement::controller::move_line(0.020, 0.10, 0.05);
-    }
 
     // sides & front
     uint8_t sensors =
@@ -68,10 +90,10 @@ Directions read_walls(Position pos) {
     vTaskDelay(10);
 
     logging::printf(100, "[maze] Updated walls: [%s %s %s %s] <- [%4d %4d %4d %4d %4d %4d]\n",
-            walls & Dir::N ? "N" : "_",
-            walls & Dir::E ? "E" : "_",
-            walls & Dir::S ? "S" : "_",
-            walls & Dir::W ? "W" : "_",
+            walls & Dir::N ? to_string(Dir::N) : "_",
+            walls & Dir::E ? to_string(Dir::E) : "_",
+            walls & Dir::S ? to_string(Dir::S) : "_",
+            walls & Dir::W ? to_string(Dir::W) : "_",
             readings.sensor[0],
             readings.sensor[1],
             readings.sensor[2],
@@ -92,28 +114,27 @@ Dir choose_best_direction(Directions possible) {
     return Dir::NONE;
 }
 
-// requires N=0, E=1, S=2, W=3
 
 void move_in_direction(Dir dir) {
-    const float right_angle = constants::deg2rad(90);
-    const float vel_lin = 0.25;
-    const float acc_lin = 0.20;
-    const float vel_ang = constants::deg2rad(220);
-    const float acc_ang = constants::deg2rad(180);
+    if (!enabled) {
+        not_enabled_warning();
+        return;
+    }
 
     // check how much we need to turn
     int turn = difference(current_dir, dir);
 
-    logging::printf(80, "[maze] Moving in direction %s (turn = %d)\n", str(dir), turn);
+    logging::printf(80, "[maze] Moving in direction %s (turn = %d)\n", to_string(dir), turn);
 
     if (turn != 0) {
-        // movement::controller::move_rotate(turn * right_angle, vel_ang, acc_ang);
+        controller::wait_until_finished(controller::move(
+                    Rotate(turn * constants::RIGHT_ANGLE, VEL_ANG_MAX, ACC_ANG_MAX, 0)));
         current_dir = dir;
     }
 
     // move to the next cell
-    // movement::controller::move_line(CELL_EDGE_LENGTH, vel_lin, acc_lin);
+    controller::wait_until_finished(controller::move(
+                Line(CELL_EDGE_LENGTH, VEL_LIN_MAX, ACC_LIN_MAX, 0)));
 }
 
-
-} // namespace maze
+} // namespace maze::wanderer

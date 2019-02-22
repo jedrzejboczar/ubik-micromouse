@@ -18,7 +18,8 @@
 #endif
 
 #include "stack.h"
-#include "directions.h"
+#include "maze_cells.h"
+#include "maze_interface.h"
 
 /*******************************************************************************
  *
@@ -50,60 +51,20 @@
 
 namespace maze {
 
-/*
- * Maze consists of square cells, each can have walls on each side (4 directions).
- * For each cell we define its weight representing the manhatan distance to target.
- */
-typedef uint8_t weight_t;
-
-struct Cell {
-    weight_t weight;
-    Directions walls;
-};
-
-/*
- * For indexing cells in maze we use two cartesian coordinates (signed
- * for easier subtraction).
- */
-struct Position {
-    int8_t x;
-    int8_t y;
-    Position(): Position(-1, -1) {}
-    Position(int8_t x, int8_t y): x(x), y(y) {}
-};
-
-/*
- * To index an edge a fractional position can be used, e.g. (2.5, 2.5).
- * This is to be used for manhatan distance calculations when we want to
- * any of 2x2 cells (than all of them should have 0 weight).
- */
-struct TargetPosition {
-    float x;
-    float y;
-    TargetPosition(float x, float y): x(x), y(y) {}
-    // allow because we don't loose precision
-    TargetPosition(Position pos): x(pos.x), y(pos.y) {}
-};
-
-/*
- * Manhatan distance / taxicab metric / L2 metric
+/**
+ * @brief Manhatan distance / taxicab metric / L2 metric
+ *
  * This is a distance when we can only move either vertically or horizontally
- * (like on Manhatan streets). This also applies to the maze.
+ * (like on Manhatan streets); this applies to the maze.
  */
 static inline size_t manhatan_distance(Position pos1, Position pos2) {
     return abs(pos1.x - pos2.x) + abs(pos1.y - pos2.y);
 }
 
+/** @brief manhatan_distance overload for TargetPosition */
 static inline float manhatan_distance(TargetPosition pos1, TargetPosition pos2) {
     return fabsf(pos1.x - pos2.x) + fabsf(pos1.y - pos2.y);
 }
-
-/*
- * Interface functions definitions.
- */
-Directions read_walls(Position pos);
-Dir choose_best_direction(Directions possible);
-void move_in_direction(Dir dir);
 
 /*
  * This is a class that implements flood-fill algorithm for traversing a maze.
