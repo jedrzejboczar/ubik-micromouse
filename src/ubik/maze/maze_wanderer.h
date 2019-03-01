@@ -15,8 +15,8 @@ namespace maze::wanderer {
 /// Distance required to move to the middle of a cell when standing with back to a wall
 constexpr float DISTANCE_MOVE_AWAY_FROM_WALL = 0.020;
 
-constexpr float VEL_LIN_LOW = 0.010;
-constexpr float VEL_LIN_MAX = 0.025;
+constexpr float VEL_LIN_LOW = 0.10;
+constexpr float VEL_LIN_MAX = 0.25;
 constexpr float VEL_ANG_LOW = constants::c_deg2rad(90);
 constexpr float VEL_ANG_MAX = constants::c_deg2rad(220);
 

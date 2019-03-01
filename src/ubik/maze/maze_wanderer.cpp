@@ -19,7 +19,8 @@
 #include "ubik/logging/logging.h"
 
 
-namespace maze::wanderer {
+namespace maze {
+namespace wanderer {
 
 using namespace movement;
 
@@ -29,7 +30,7 @@ static Dir current_dir = Dir::N;
 static bool enabled = false;
 
 static void not_enabled_warning() {
-    logging::printf(60, "[WARNING] [maze] Maze walker not enabled, cannot prepare!\n");
+    logging::printf(80, "[WARNING] [maze] Maze walker not enabled, cannot prepare!\n");
 }
 
 
@@ -44,20 +45,28 @@ void prepare_starting_from_wall_behind() {
     }
 
     // calibrate sensors to the walls at sides while we are at the middle
+    logging::printf(80, "[maze] Performing side walls calibration\n");
     correction::side_walls.calibrate();
     // correction::side_walls.set_enabled(true);
 
     // calibrate front sensors by carrefully turning to the wall
-    controller::move(Rotate(constants::RIGHT_ANGLE, VEL_ANG_LOW, ACC_ANG_LOW, 0));
+    logging::printf(80, "[maze] Performing front walls calibration sequence...\n");
+    controller::wait_until_finished(
+            controller::move(Rotate(constants::RIGHT_ANGLE, VEL_ANG_LOW, ACC_ANG_LOW, 0)));;
     correction::front_walls.calibrate();
-    controller::move(Rotate(-constants::RIGHT_ANGLE, VEL_ANG_LOW, ACC_ANG_LOW, 0));
+    controller::wait_until_finished(
+            controller::move(Rotate(-constants::RIGHT_ANGLE, VEL_ANG_LOW, ACC_ANG_LOW, 0)));
 
     // move away from the wall that we have behind to reach center of the cell
-    controller::move(Line(DISTANCE_MOVE_AWAY_FROM_WALL, VEL_LIN_LOW, ACC_LIN_LOW, 0));
+    logging::printf(80, "[maze] Moving away from wall\n");
+    controller::wait_until_finished(
+            controller::move(Line(DISTANCE_MOVE_AWAY_FROM_WALL, VEL_LIN_LOW, ACC_LIN_LOW, 0)));
 }
 
+} // namespace wanderer
 
 /*** Implementation of maze interface functions *******************************/
+using namespace wanderer;
 
 /*
  * Example distance sensors readings in different parts of maze:
@@ -133,8 +142,10 @@ void move_in_direction(Dir dir) {
     }
 
     // move to the next cell
+    movement::correction::side_walls.set_enabled(true);
     controller::wait_until_finished(controller::move(
                 Line(CELL_EDGE_LENGTH, VEL_LIN_MAX, ACC_LIN_MAX, 0)));
+    movement::correction::side_walls.set_enabled(false);
 }
 
-} // namespace maze::wanderer
+} // namespace maze

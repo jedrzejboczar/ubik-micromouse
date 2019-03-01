@@ -59,7 +59,6 @@ void show_distance_sensors_until_button() {
 
 void maze_solver() {
     using namespace system_monitor;
-    namespace ctrl = movement::controller;
 
     // Select maze size
     constexpr int MAX_MAZE_SIZE = 16;
@@ -138,19 +137,19 @@ void front_wall_follower() {
 void main_task(void *) {
     vTaskDelay(300);
 
+    movement::controller::become_owner();
+
     // gather_distance_sensors_plot_data(0.50, 0.005);
     show_distance_sensors_until_button();
-    front_wall_follower();
-    // maze_solver();
+    // front_wall_follower();
+    maze_solver();
 
     // using namespace movement;
-    //
-    // controller::become_owner();
     // controller::MoveId moves_sequence[] = {
-    //     controller::move(Line(0.5, 0.3, 0.1, 0)),
-    //     controller::move(Rotate(PI, PI, PI, 0)),
-    //     controller::move(Line(0.5, 0.3, 0.1, 0)),
-    //     controller::move(Arc({ 0.5, PI }, 0.3, 0.1, 0))
+    //     controller::move(Line(-0.5, 0.3, 0.1, 0)),
+    //     controller::move(Rotate(-PI, PI, PI, 0)),
+    //     controller::move(Line(-0.5, 0.3, 0.1, 0)),
+    //     controller::move(Arc({ 0.5, -PI }, 0.3, 0.1, 0))
     // };
     //
     // controller::wait_until_finished(moves_sequence[1]);
