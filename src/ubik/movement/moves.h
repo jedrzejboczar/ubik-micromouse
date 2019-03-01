@@ -9,6 +9,14 @@
 namespace movement {
 
 /*
+ * Moves usage:
+ *  Basic moves are defined by distance, speed and velocity. More complicated
+ *  ones could use some more parameters (e.g. Arc). The direction of movement
+ *  is taken from distance argument(s). All other arguments should be positive.
+ *
+ * *****************************************************************************
+ * Backstory:
+ *
  * At first this was used for an interface that should be provided by each Move.
  *
  * class Move {
@@ -47,7 +55,6 @@ namespace movement {
  * std::is_trivialy_destructible will be enough.
  * This is because those object may not get destructed? Or maybe they will?
  * My CPP-fu ends here I guess...
- *
  */
 
 typedef std::pair<float, float> Pair;

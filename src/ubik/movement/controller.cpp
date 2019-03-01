@@ -92,6 +92,7 @@ void controller_task(void *) {
             // initialise the received move
             std::visit([&trajectory](auto &move) { move.initialise_generator(trajectory); },
                     move_requested.move);
+            // logging::printf(60, "[ctrl] Started move: %d\n", current_move_id);
         }
 
         // if the move is ongoing, process next step (also test to ignore the first "artificial" move)
