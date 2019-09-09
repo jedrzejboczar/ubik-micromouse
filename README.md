@@ -12,18 +12,18 @@ The code has been written in C++17 for the STM32F103 microcontroller under FreeR
 **Directories hierarchy**
 
 ```
-src
-├── cube                      # STM32 Cube libraries with initial device configuraton
-├── freeRTOS                  # standard FreeRTOS library (no CMSIS-OS)
-├── mpaland_printf            # tiny printf implementation for embedded systems by mpaland
-└── ubik                      # main code of this project
-    ├── common                # common utilities, simple hardware wrappers, global state, interrupts, etc.
-    ├── localization          # module resposible for position tracking with dead reckoning 
-    ├── logging               # logging to PC using Bluetooth module via UART
-    ├── maze                  # implementation of maze traversal logic (abstract, moves by discrete cells)
-    └── movement              # movement controller - trajectory generation and tracking
-    ├── system_monitor.cpp/h  # top-level system control
-    └── ubik.cpp              # actual main function
+src/
+├── cube/                      # STM32 Cube libraries with initial device configuraton
+├── freeRTOS/                  # standard FreeRTOS library (no CMSIS-OS)
+├── mpaland_printf/            # tiny printf implementation for embedded systems by mpaland
+└── ubik/                      # main code of this project
+    ├── common/                # common utilities, simple hardware wrappers, global state, interrupts, etc.
+    ├── localization/          # module resposible for position tracking with dead reckoning 
+    ├── logging/               # logging to PC using Bluetooth module via UART
+    ├── maze/                  # implementation of maze traversal logic (abstract, moves by discrete cells)
+    └── movement/              # movement controller - trajectory generation and tracking
+    ├── system_monitor.cpp     # top-level system control
+    └── ubik.cpp               # actual main function
 ```
 
 **HAL**
