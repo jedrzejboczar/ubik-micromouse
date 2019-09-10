@@ -21,7 +21,7 @@ src/
     ├── localization/          # module resposible for position tracking with dead reckoning 
     ├── logging/               # logging to PC using Bluetooth module via UART
     ├── maze/                  # implementation of maze traversal logic (abstract, moves by discrete cells)
-    └── movement/              # movement controller - trajectory generation and tracking
+    ├── movement/              # movement controller - trajectory generation and tracking
     ├── system_monitor.cpp     # top-level system control
     └── ubik.cpp               # actual main function
 ```
